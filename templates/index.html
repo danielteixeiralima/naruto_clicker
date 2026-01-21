@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naruto Clicker Heroes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Coluna Esquerda: Heróis -->
+        <div class="panel left-panel">
+            <div class="header-panel">
+                <h2>Equipe Ninja</h2>
+                <div class="dps-display">DPS Total: <span id="total-dps">0</span></div>
+            </div>
+            <div id="heroes-list" class="scroll-content">
+                <!-- Heróis serão inseridos aqui via JS -->
+            </div>
+        </div>
+
+        <!-- Coluna Central: Ação -->
+        <div class="panel center-panel">
+            <div class="zone-info">
+                <h3>Zona <span id="current-zone">1</span></h3>
+                <div class="progress-bar-container">
+                    <div class="killed-count">Killed/Level: <span id="monsters-killed">0</span>/10</div>
+                </div>
+            </div>
+            
+            <div class="battle-arena">
+                <div id="damage-numbers-container"></div>
+                <div class="monster-container" id="click-target">
+                    <div class="monster-hp-bar">
+                        <div id="hp-fill" style="width: 100%;"></div>
+                    </div>
+                    <div class="monster-hp-text"><span id="current-hp">10</span> HP</div>
+                    <div class="monster-visual">
+                        <img id="monster-img" src="" alt="Monstro">
+                    </div>
+                    <div id="monster-name">Ninja Renegado</div>
+                </div>
+            </div>
+            
+            <div class="player-controls">
+                <div class="click-damage-info">Dano de Clique: <span id="click-damage">1</span></div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Progresso e Status -->
+        <div class="panel right-panel">
+            <div class="gold-display">
+                <img src="https://i.imgur.com/kM8X9Qy.png" class="gold-icon" alt="Ryo"> <!-- Placeholder icon -->
+                <span id="player-gold">0</span> Ryo
+            </div>
+            
+            <div class="achievements-section">
+                <h3>Estatísticas</h3>
+                <ul id="stats-list">
+                    <li>Monstros Derrotados: <span id="stat-killed">0</span></li>
+                    <li>Cliques Realizados: <span id="stat-clicks">0</span></li>
+                    <li>Maior Zona: <span id="stat-max-zone">1</span></li>
+                </ul>
+            </div>
+
+            <div class="log-panel">
+                <h3>Log de Batalha</h3>
+                <div id="battle-log" class="scroll-content small">
+                    <p>Bem-vindo ao Mundo Ninja!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/game_data.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>

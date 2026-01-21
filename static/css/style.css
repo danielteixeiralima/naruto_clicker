@@ -1,0 +1,219 @@
+:root {
+    --bg-color: #2c2c2c;
+    --panel-bg: #f5e6ca; /* Cor de pergaminho */
+    --panel-border: #4a3b2a;
+    --primary-orange: #ff6600;
+    --text-color: #333;
+    --gold-color: #ffd700;
+    --dps-color: #ff4500;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--bg-color);
+    background-image: url('https://i.pinimg.com/originals/3b/8a/d2/3b8ad2c7b1be2cab8292135be5994033.jpg'); /* Background genérico ninja/nuvens */
+    background-size: cover;
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+}
+
+.game-container {
+    display: flex;
+    height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+.panel {
+    background-color: var(--panel-bg);
+    border: 5px solid var(--panel-border);
+    border-radius: 8px;
+    margin: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.1);
+}
+
+.panel::before {
+    content: ""; /* Textura de papel */
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png');
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.left-panel { flex: 1; min-width: 300px; z-index: 1; }
+.center-panel { flex: 2; z-index: 1; background-color: rgba(255, 255, 255, 0.1); border: none; box-shadow: none; background: none;} 
+/* Center panel is transparent to see bg */
+
+.center-panel .battle-arena {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.right-panel { flex: 1; min-width: 250px; z-index: 1; }
+
+/* Scroll Lists */
+.scroll-content {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 5px;
+}
+
+.scroll-content::-webkit-scrollbar { width: 8px; }
+.scroll-content::-webkit-scrollbar-thumb { background: var(--primary-orange); border-radius: 4px; }
+
+/* Heroes List */
+.hero-item {
+    background: rgba(255,255,255,0.5);
+    border: 2px solid #8b4513;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    transition: transform 0.1s;
+    cursor: pointer;
+}
+
+.hero-item:hover { transform: scale(1.02); background: rgba(255,255,255,0.8); }
+.hero-item.disabled { filter: grayscale(1); opacity: 0.7; cursor: not-allowed; }
+
+.hero-img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--panel-border); margin-right: 10px; background: #ccc; }
+.hero-info { flex: 1; }
+.hero-name { font-weight: bold; font-family: 'Bangers', cursive; font-size: 1.1em; }
+.hero-stats { font-size: 0.8em; color: #555; }
+.hero-cost { font-weight: bold; color: #d68910; }
+.hero-level { background: var(--panel-border); color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 0.8em; float: right;}
+
+/* Monster & Battle */
+.monster-container {
+    text-align: center;
+    position: relative;
+    cursor: url('https://cdn.custom-cursor.com/db/cursor/32/Kunai_Cursor.png'), auto; /* Custom cursor fun */
+}
+
+.monster-visual {
+    width: 250px;
+    height: 250px;
+    margin: 20px auto;
+    transition: transform 0.05s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.monster-visual img {
+    max-width: 100%;
+    max-height: 100%;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
+}
+
+.monster-visual:active { transform: scale(0.95); }
+.shake { animation: shake 0.2s; }
+
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.monster-hp-bar {
+    width: 300px;
+    height: 20px;
+    background: #555;
+    border: 2px solid #000;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+#hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff0000, #ff6600);
+    transition: width 0.1s linear;
+}
+
+.monster-hp-text {
+    font-family: 'Bangers', cursive;
+    font-size: 1.5em;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    margin-top: -22px;
+    position: relative;
+    z-index: 2;
+}
+
+#damage-numbers-container {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+}
+
+.damage-number {
+    position: absolute;
+    font-family: 'Bangers', cursive;
+    font-size: 2em;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    animation: floatUp 1s ease-out forwards;
+}
+
+.damage-crit {
+    color: #ff0000;
+    font-size: 3em;
+}
+
+@keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-100px) scale(1.2); }
+}
+
+/* Headers & Fonts */
+h2, h3 { font-family: 'Bangers', cursive; letter-spacing: 1px; margin: 0 0 10px 0; color: #2c2c2c; }
+.gold-display {
+    font-family: 'Bangers', cursive;
+    font-size: 2em;
+    color: var(--gold-color);
+    text-shadow: 2px 2px 0 #000;
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gold-icon { height: 30px; margin-right: 10px; }
+
+/* Log */
+.small { font-size: 0.9em; }
+#battle-log p { margin: 5px 0; border-bottom: 1px dashed #ccc; padding-bottom: 2px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .game-container { flex-direction: column; overflow-y: auto; height: auto; }
+    .panel { min-width: 0; height: auto; }
+    .center-panel { order: -1; } /* Battle on top mobile */
+}
