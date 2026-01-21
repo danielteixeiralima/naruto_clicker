@@ -1411,3 +1411,97 @@ hr {
     border: 2px solid #ffd700;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 }
+
+/* ===== ADMIN PANEL ===== */
+#admin-trigger {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 3px solid #4a5568;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8em;
+    cursor: pointer;
+    z-index: 8888;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+#admin-trigger:hover {
+    transform: scale(1.15) rotate(90deg);
+    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.7);
+}
+
+.admin-modal {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 6px solid #4a5568;
+    border-radius: 20px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8),
+        inset 0 2px 10px rgba(255, 255, 255, 0.2);
+    width: 90%;
+    max-width: 500px;
+    overflow: hidden;
+    position: relative;
+    animation: modalSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.admin-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+}
+
+.admin-input-group label {
+    font-family: 'Shojumaru', cursive;
+    font-size: 1.3em;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.admin-input-group input {
+    padding: 12px 15px;
+    font-size: 1.2em;
+    border: 3px solid #4a5568;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.admin-input-group input:focus {
+    outline: none;
+    border-color: #ffd700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.admin-btn {
+    padding: 15px 30px;
+    font-size: 1.3em;
+    font-weight: bold;
+    background: linear-gradient(to bottom, #ffd700, #ffb700);
+    border: 3px solid #8b6f00;
+    border-radius: 12px;
+    color: #000;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.admin-btn:hover {
+    background: linear-gradient(to bottom, #ffed4e, #ffd700);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(255, 215, 0, 0.6);
+}
+
+.admin-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}

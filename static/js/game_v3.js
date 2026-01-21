@@ -737,6 +737,9 @@ function setupEventListeners() {
 
     // Inicializar grid de inventário
     initializeInventory();
+
+    // Inicializar painel admin
+    setupAdminPanel();
 }
 
 function initializeInventory() {
@@ -768,6 +771,53 @@ function renderInventory() {
             slot.className = 'inventory-slot empty';
             slot.innerHTML = '';
             slot.title = 'Slot vazio';
+        }
+    });
+}
+
+// ===== ADMIN PANEL =====
+function setupAdminPanel() {
+    const adminTrigger = document.getElementById('admin-trigger');
+    const adminModal = document.getElementById('admin-modal');
+    const closeAdminBtn = document.getElementById('close-admin');
+    const addGoldBtn = document.getElementById('add-gold-btn');
+    const goldInput = document.getElementById('gold-input');
+
+    // Abrir modal admin
+    adminTrigger.addEventListener('click', () => {
+        adminModal.style.display = 'flex';
+        goldInput.value = '';
+        goldInput.focus();
+    });
+
+    // Fechar modal admin
+    closeAdminBtn.addEventListener('click', () => {
+        adminModal.style.display = 'none';
+    });
+
+    // Fechar ao clicar fora
+    adminModal.addEventListener('click', (e) => {
+        if (e.target === adminModal) {
+            adminModal.style.display = 'none';
+        }
+    });
+
+    // Adicionar ouro
+    addGoldBtn.addEventListener('click', () => {
+        const amount = parseFloat(goldInput.value);
+        if (amount && amount > 0) {
+            gameState.gold += amount;
+            updateUI();
+            saveGame();
+            goldInput.value = '';
+            console.log(`✅ Admin: Adicionado ${formatNumber(amount)} de ouro`);
+        }
+    });
+
+    // Enter para adicionar
+    goldInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addGoldBtn.click();
         }
     });
 }
