@@ -161,16 +161,21 @@ function renderHeroesList() {
         // O usuario pediu "nome e sobrenome um ao lado do outro".
         // displayName já é "Naruto Uzumaki".
 
+        let elementImg = "";
+        if (!isLocked && hero.element) {
+            elementImg = `<img src="./static/img/elements/${hero.element}.png" class="hero-element-icon" title="Elemento: ${hero.element}">`;
+        }
+
         let nameTitleHTML = `
             <div class="hero-title-header">
-                ${displayName}
+                ${displayName} ${elementImg}
             </div>
         `;
 
         // --- COLUNA ESQUERDA: APENAS IMAGEM ---
         // Remover nome daqui de dentro
         // Aplicando foco dinâmico (inteligente) se definido, senão padrão topo
-        let focusStyle = hero.focus ? `style="transform-origin: ${hero.focus}"` : '';
+        let focusStyle = hero.focus ? `style="object-position: ${hero.focus}"` : '';
 
         let leftColHTML = `
             <div class="card-left-col">

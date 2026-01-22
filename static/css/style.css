@@ -916,6 +916,15 @@ h3 {
     padding-left: 20px;
     white-space: nowrap;
     /* Forçar uma linha */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hero-element-icon {
+    height: 35px;
+    width: auto;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
 }
 
 /* THE ACTUAL CARD BOX */
@@ -969,6 +978,8 @@ h3 {
     height: 100%;
     object-fit: cover;
     object-position: top center;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
     filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.3));
     transition: transform 0.3s ease;
     /* Transição mais suave */
@@ -1504,4 +1515,22 @@ hr {
 .admin-btn:active {
     transform: translateY(0);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+/* Elemental Cycle Guide */
+.elemental-cycle-guide {
+    position: absolute;
+    top: 100px;
+    right: 20px;
+    width: 250px;
+    height: auto;
+    z-index: 100;
+    pointer-events: none;
+    filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.6));
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.center-panel:hover .elemental-cycle-guide {
+    opacity: 0.7;
 }
