@@ -1,3 +1,4 @@
+console.log('🎮 Game v3.js carregado - VERSÃO 5 - Boss Timer');
 // Estado Global do Jogo
 const gameState = {
     gold: 0,
@@ -21,7 +22,9 @@ const gameState = {
         maxZone: 1
     },
     lastEnemyIndex: -1, // Para evitar repetição consecutiva
-    inventory: [] // Mochila de itens
+    inventory: [], // Mochila de itens
+    bossTimer: 30, // Cronômetro de boss (30 segundos)
+    bossTimerInterval: null // Referência ao intervalo do cronômetro
 };
 
 // Configurações
@@ -40,14 +43,6 @@ function initGame() {
 
     // Auto-save a cada 30s
     autoSaveInterval = setInterval(saveGame, 30000);
-
-    // TESTE: Adicionar alguns itens de exemplo
-    gameState.inventory = [
-        { icon: '🗡️', name: 'Kunai Lendária', description: '+10% Dano de Clique', count: 1 },
-        { icon: '📜', name: 'Pergaminho Antigo', description: 'Ensina uma técnica secreta', count: 3 },
-        { icon: '💊', name: 'Pílula Militar', description: '+50% DPS por 30s', count: 5 },
-        { icon: '⚡', name: 'Chakra Cristalizado', description: 'Recurso raro', count: 12 }
-    ];
 }
 
 // Configura lista de heróis baseada no game_data.js
@@ -425,8 +420,42 @@ function renderArenas() {
 function spawnMonster() {
     if (!gameState.currentMonster) return;
 
-    const zoneMultiplier = Math.pow(zoneData.hpMultiplier, gameState.currentZone - 1);
-    gameState.currentMonster.maxHp = Math.floor(zoneData.baseHp * zoneMultiplier);
+    // Verifica se é uma fase de boss (múltiplo de 5)
+    const isBossZone = gameState.currentZone % 5 === 0;
+
+    // Calcular HP baseado na progressão SEM contar fases de boss
+    // Fases de boss não contam para a progressão
+    // Exemplo: Fase 1, 2, 3, 4, 6, 7, 8, 9, 11, 12...
+    // A fase 5 (boss) não conta, então fase 6 = progressão 5
+    // A fase 10 (boss) não conta, então fase 11 = progressão 9
+
+    let effectiveZone;
+    if (isBossZone) {
+        // Boss: usar a zona anterior (que não é boss)
+        effectiveZone = gameState.currentZone - 1;
+    } else {
+        // Inimigo normal: calcular quantas fases de boss já passaram
+        const bossPhasesPassed = Math.floor((gameState.currentZone - 1) / 5);
+        effectiveZone = gameState.currentZone - bossPhasesPassed;
+    }
+
+    // Calcular HP do inimigo normal baseado na zona efetiva
+    const zoneMultiplier = Math.pow(zoneData.hpMultiplier, effectiveZone - 1);
+    const normalEnemyHp = Math.floor(zoneData.baseHp * zoneMultiplier);
+
+    if (isBossZone) {
+        // Boss tem multiplicador progressivo baseado na fórmula:
+        // BossMultiplier(n) = 8 + (n × 0.1)
+        // Com limite máximo de 20x
+        let bossMultiplier = 8 + (gameState.currentZone * 0.1);
+        bossMultiplier = Math.min(bossMultiplier, 20); // Limitar a 20x
+
+        gameState.currentMonster.maxHp = Math.floor(normalEnemyHp * bossMultiplier);
+    } else {
+        // Inimigo normal
+        gameState.currentMonster.maxHp = normalEnemyHp;
+    }
+
     gameState.currentMonster.hp = gameState.currentMonster.maxHp;
 
     const randomName = monsterNames[Math.floor(Math.random() * monsterNames.length)];
@@ -437,12 +466,19 @@ function spawnMonster() {
 
     const imgEl = document.getElementById('monster-img');
     if (imgEl) {
-        // Verifica se é uma fase de boss (múltiplo de 5)
-        const isBossZone = gameState.currentZone % 5 === 0;
-
         if (isBossZone) {
             // Boss: usa imagem especial
             imgEl.src = bossImage;
+
+            // Iniciar cronômetro de boss
+            startBossTimer();
+
+            // Esconder contador de monstros e mostrar cronômetro
+            const monstersKilledEl = document.querySelector('.zone-progress-info');
+            if (monstersKilledEl) monstersKilledEl.style.display = 'none';
+
+            const bossTimerEl = document.getElementById('boss-timer');
+            if (bossTimerEl) bossTimerEl.style.display = 'block';
         } else {
             // Inimigo normal: lógica para evitar repetir o mesmo monstro em seguida
             let newIdx;
@@ -452,6 +488,16 @@ function spawnMonster() {
 
             gameState.lastEnemyIndex = newIdx;
             imgEl.src = monsterImages[newIdx];
+
+            // Parar cronômetro se estiver rodando
+            stopBossTimer();
+
+            // Mostrar contador de monstros e esconder cronômetro
+            const monstersKilledEl = document.querySelector('.zone-progress-info');
+            if (monstersKilledEl) monstersKilledEl.style.display = 'block';
+
+            const bossTimerEl = document.getElementById('boss-timer');
+            if (bossTimerEl) bossTimerEl.style.display = 'none';
         }
 
         // Escalamento: a cada 5 fases aumenta 2% (1.02) para inimigos normais
@@ -506,21 +552,123 @@ function monterDeath() {
 
     gameState.gold += goldDrop;
     gameState.statistics.totalKills++;
-    gameState.monstersKilledInZone++;
 
-    // Desbloqueia próxima zona se matar o necessário na zona MAXIMA atual
-    if (gameState.monstersKilledInZone >= zoneData.monstersPerZone) {
+    // Animação de moedas caindo
+    createGoldCoins(goldDrop);
+
+    // Verificar se é boss
+    const isBoss = gameState.currentZone % 5 === 0;
+
+    if (isBoss) {
+        // Boss morto: parar cronômetro e avançar para próxima zona
+        stopBossTimer();
+
+        // Desbloquear próxima zona se for a zona máxima
         if (gameState.currentZone === gameState.statistics.maxZone) {
             gameState.statistics.maxZone++;
             renderArenas();
-            gameState.monstersKilledInZone = 0;
-        } else {
-            gameState.monstersKilledInZone = 0;
+        }
+
+        // Resetar contador de monstros mortos
+        gameState.monstersKilledInZone = 0;
+    } else {
+        // Inimigo normal: incrementar contador
+        gameState.monstersKilledInZone++;
+
+        // Sistema de Drop de Itens
+        // Apenas inimigos comuns (não bosses) nas arenas 10-15 com 2% de chance
+        const isInDropZone = gameState.currentZone >= 10 && gameState.currentZone <= 15;
+        const dropChance = 0.02; // 2%
+
+        if (isInDropZone && Math.random() < dropChance) {
+            // Item dropado: Veneno
+            const droppedItem = {
+                icon: './static/img/items/poison.png',
+                name: 'Frasco de Veneno',
+                description: 'Um veneno mortal usado por ninjas',
+                count: 1,
+                isImage: true
+            };
+
+            // Adicionar ao inventário
+            if (addItemToInventory(droppedItem)) {
+                // Mostrar notificação visual
+                showItemDropNotification(droppedItem);
+            }
+        }
+
+        // Desbloqueia próxima zona se matar o necessário na zona MAXIMA atual
+        if (gameState.monstersKilledInZone >= zoneData.monstersPerZone) {
+            if (gameState.currentZone === gameState.statistics.maxZone) {
+                gameState.statistics.maxZone++;
+                renderArenas();
+                gameState.monstersKilledInZone = 0;
+            } else {
+                gameState.monstersKilledInZone = 0;
+            }
         }
     }
 
     spawnMonster();
     updateUI();
+}
+
+// ===== SISTEMA DE CRONÔMETRO DE BOSS =====
+function startBossTimer() {
+    // Parar qualquer cronômetro anterior
+    stopBossTimer();
+
+    // Resetar para 30 segundos
+    gameState.bossTimer = 30;
+    updateBossTimerDisplay();
+
+    // Iniciar intervalo de 1 segundo
+    gameState.bossTimerInterval = setInterval(() => {
+        gameState.bossTimer--;
+        updateBossTimerDisplay();
+
+        // Adicionar classe de aviso quando restarem 10 segundos ou menos
+        const bossTimerEl = document.getElementById('boss-timer');
+        if (gameState.bossTimer <= 10) {
+            if (bossTimerEl) bossTimerEl.classList.add('warning');
+        } else {
+            if (bossTimerEl) bossTimerEl.classList.remove('warning');
+        }
+
+        // Quando chegar a 0, resetar vida do boss
+        if (gameState.bossTimer <= 0) {
+            resetBossHealth();
+        }
+    }, 1000);
+}
+
+function stopBossTimer() {
+    if (gameState.bossTimerInterval) {
+        clearInterval(gameState.bossTimerInterval);
+        gameState.bossTimerInterval = null;
+    }
+
+    // Remover classe de aviso
+    const bossTimerEl = document.getElementById('boss-timer');
+    if (bossTimerEl) bossTimerEl.classList.remove('warning');
+}
+
+function updateBossTimerDisplay() {
+    const bossTimerValueEl = document.getElementById('boss-timer-value');
+    if (bossTimerValueEl) {
+        bossTimerValueEl.textContent = gameState.bossTimer;
+    }
+}
+
+function resetBossHealth() {
+    // Resetar vida do boss para o máximo
+    gameState.currentMonster.hp = gameState.currentMonster.maxHp;
+    updateMonsterUI();
+
+    // Reiniciar cronômetro
+    startBossTimer();
+
+    console.log('⏱️ Tempo esgotado! Vida do boss resetada.');
 }
 
 // Loop Principal
@@ -597,6 +745,9 @@ function setupEventListeners() {
     if (prevBtn) prevBtn.onclick = () => changeZone('prev');
     const nextBtn = document.getElementById('next-zone');
     if (nextBtn) nextBtn.onclick = () => changeZone('next');
+
+    // Configurar eventos da mochila
+    setupBackpackEventListeners();
 }
 
 // UI Helpers
@@ -672,6 +823,62 @@ function animateMonsterHitScale() {
     }
 }
 
+function createGoldCoins(amount) {
+    const container = document.getElementById('damage-numbers-container');
+    if (!container) return;
+
+    // Criar entre 3 e 8 moedas dependendo da quantidade de ouro
+    const numCoins = Math.min(Math.max(3, Math.floor(amount / 10)), 8);
+
+    for (let i = 0; i < numCoins; i++) {
+        const coin = document.createElement('div');
+        coin.className = 'gold-coin';
+        coin.textContent = '💰';
+
+        // Posição inicial aleatória ao redor do centro do monstro
+        const x = 45 + (Math.random() * 10 - 5); // 40-50%
+        const y = 40 + (Math.random() * 20 - 10); // 30-50%
+
+        coin.style.left = `${x}%`;
+        coin.style.top = `${y}%`;
+
+        // Pequeno delay para cada moeda criar efeito cascata
+        coin.style.animationDelay = `${i * 0.1}s`;
+
+        container.appendChild(coin);
+
+        // Remover após a animação
+        setTimeout(() => coin.remove(), 1500 + (i * 100));
+    }
+}
+
+function showItemDropNotification(item) {
+    // Criar elemento de notificação
+    const notification = document.createElement('div');
+    notification.className = 'item-drop-notification';
+
+    // Criar conteúdo
+    const iconHTML = item.isImage
+        ? `<img src="${item.icon}" alt="${item.name}">`
+        : `<div style="font-size: 2.5em;">${item.icon}</div>`;
+
+    notification.innerHTML = `
+        ${iconHTML}
+        <div class="drop-content">
+            <div class="drop-text">ITEM ENCONTRADO!</div>
+            <div class="item-name">${item.name}</div>
+        </div>
+    `;
+
+    // Adicionar ao body
+    document.body.appendChild(notification);
+
+    // Remover após 3 segundos
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
 function formatNumber(num) {
     if (num >= 1000000000000) return (num / 1000000000000).toFixed(2) + 'T';
     if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
@@ -687,7 +894,8 @@ function saveGame() {
         currentZone: gameState.currentZone,
         savedHeroes: gameState.heroes.map(h => ({ id: h.id, level: h.level })),
         upgrades: gameState.upgrades,
-        statistics: gameState.statistics
+        statistics: gameState.statistics,
+        inventory: gameState.inventory
     };
     localStorage.setItem('narutoClickerSave', JSON.stringify(saveObj));
 }
@@ -702,6 +910,7 @@ function loadGame() {
             gameState.savedHeroes = saved.savedHeroes || [];
             gameState.upgrades = saved.upgrades || [];
             gameState.statistics = { ...gameState.statistics, ...saved.statistics };
+            gameState.inventory = saved.inventory || [];
             if (!gameState.statistics.maxZone) gameState.statistics.maxZone = 1;
         } catch (e) {
             console.error("Erro save", e);
@@ -717,26 +926,37 @@ function resetGame() {
 }
 
 // ===== SISTEMA DE MOCHILA =====
-function setupEventListeners() {
+function setupBackpackEventListeners() {
+    console.log('🎒 Configurando eventos da mochila...');
     const openBackpackBtn = document.getElementById('open-backpack');
     const closeBackpackBtn = document.getElementById('close-backpack');
     const backpackModal = document.getElementById('backpack-modal');
 
+    if (!openBackpackBtn || !closeBackpackBtn || !backpackModal) {
+        console.warn('⚠️ Elementos da mochila não encontrados');
+        return;
+    }
+    console.log('✅ Elementos da mochila encontrados, configurando listeners...');
+
     // Abrir modal
     openBackpackBtn.addEventListener('click', () => {
-        backpackModal.style.display = 'flex';
+        console.log('🎒 Abrindo mochila...');
+        backpackModal.classList.add('active');
+        console.log('Classes do modal:', backpackModal.className);
         renderInventory();
     });
 
     // Fechar modal
     closeBackpackBtn.addEventListener('click', () => {
-        backpackModal.style.display = 'none';
+        console.log('❌ Fechando mochila (botão X)...');
+        backpackModal.classList.remove('active');
     });
 
-    // Fechar ao clicar fora do modal
+    // Fechar ao clicar fora do modal (no backdrop)
     backpackModal.addEventListener('click', (e) => {
         if (e.target === backpackModal) {
-            backpackModal.style.display = 'none';
+            console.log('❌ Fechando mochila (clique fora)...');
+            backpackModal.classList.remove('active');
         }
     });
 
@@ -759,6 +979,35 @@ function initializeInventory() {
     }
 }
 
+function addItemToInventory(newItem) {
+    // Verificar se o item já existe no inventário (mesmo nome)
+    const existingItem = gameState.inventory.find(item => item && item.name === newItem.name);
+
+    if (existingItem) {
+        // Se já existe, aumentar a contagem
+        existingItem.count += newItem.count;
+    } else {
+        // Se não existe, adicionar em um slot vazio
+        const emptySlotIndex = gameState.inventory.findIndex(item => !item);
+
+        if (emptySlotIndex !== -1) {
+            // Tem slot vazio, adicionar lá
+            gameState.inventory[emptySlotIndex] = newItem;
+        } else if (gameState.inventory.length < 40) {
+            // Não tem slot vazio mas ainda tem espaço
+            gameState.inventory.push(newItem);
+        } else {
+            // Inventário cheio
+            console.warn('⚠️ Inventário cheio! Não foi possível adicionar o item.');
+            return false;
+        }
+    }
+
+    // Salvar o jogo após adicionar item
+    saveGame();
+    return true;
+}
+
 function renderInventory() {
     const slots = document.querySelectorAll('.inventory-slot');
 
@@ -767,8 +1016,14 @@ function renderInventory() {
 
         if (item) {
             slot.className = 'inventory-slot has-item';
+
+            // Verificar se o ícone é uma imagem ou emoji
+            const iconHTML = item.isImage
+                ? `<img src="${item.icon}" class="item-icon-img" alt="${item.name}">`
+                : `<span class="item-icon">${item.icon}</span>`;
+
             slot.innerHTML = `
-                <span class="item-icon">${item.icon}</span>
+                ${iconHTML}
                 ${item.count > 1 ? `<span class="item-count">x${item.count}</span>` : ''}
             `;
             slot.title = `${item.name}\n${item.description}`;

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Naruto Clicker Heroes</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
     <link
         href="https://fonts.googleapis.com/css2?family=Bangers&family=Shojumaru&family=Roboto:wght@400;700&display=swap"
         rel="stylesheet">
@@ -51,6 +51,10 @@
                 <div class="zone-progress-info">
                     <span id="monsters-killed">0</span>/10
                 </div>
+                <!-- Cronômetro de Boss -->
+                <div id="boss-timer" class="boss-timer" style="display: none;">
+                    ⏱️ <span id="boss-timer-value">30</span>s
+                </div>
                 <div id="damage-numbers-container"></div>
                 <div class="monster-container" id="click-target">
                     <div class="monster-hp-bar">
@@ -83,13 +87,16 @@
     </div>
 
     <!-- Modal da Mochila -->
-    <div id="backpack-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content backpack-modal">
-            <div class="modal-header">
-                <h2>🎒 Mochila Ninja</h2>
-                <button class="modal-close" id="close-backpack">✖</button>
+    <div id="backpack-modal" class="backpack-modal">
+        <div class="backpack-container">
+            <div class="backpack-header">
+                <div class="backpack-title">
+                    <span class="backpack-icon">🎒</span>
+                    Inventário
+                </div>
+                <button class="close-backpack" id="close-backpack">✖</button>
             </div>
-            <div class="modal-body">
+            <div class="backpack-body">
                 <div id="inventory-grid" class="inventory-grid">
                     <!-- Slots serão gerados via JavaScript -->
                 </div>
@@ -116,10 +123,9 @@
 
     <!-- Botão Admin (Discreto) -->
     <div id="admin-trigger" title="Admin Panel">⚙️</div>
-    </div>
 
-    <script src="{{ url_for('static', filename='js/game_data_v3.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/game_v3.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/game_data_v3.js') }}?v=5"></script>
+    <script src="{{ url_for('static', filename='js/game_v3.js') }}?v=9"></script>
 </body>
 
 </html>

@@ -121,7 +121,7 @@ heroesData.forEach(hero => {
 
 const zoneData = {
     baseHp: 10,
-    hpMultiplier: 1.55,
+    hpMultiplier: 2.05,
     coinsMultiplier: 1.5,
     monstersPerZone: 10
 };
