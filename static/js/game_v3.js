@@ -835,20 +835,20 @@ function createGoldCoins(amount) {
         coin.className = 'gold-coin';
         coin.textContent = '💰';
 
-        // Posição inicial aleatória ao redor do centro do monstro
+        // Posição inicial aleatória ao redor do meio do monstro (mais para baixo)
         const x = 45 + (Math.random() * 10 - 5); // 40-50%
-        const y = 40 + (Math.random() * 20 - 10); // 30-50%
+        const y = 50 + (Math.random() * 15 - 7.5); // 42.5-57.5% (meio do personagem)
 
         coin.style.left = `${x}%`;
         coin.style.top = `${y}%`;
 
         // Pequeno delay para cada moeda criar efeito cascata
-        coin.style.animationDelay = `${i * 0.1}s`;
+        coin.style.animationDelay = `${i * 0.08}s`;
 
         container.appendChild(coin);
 
-        // Remover após a animação
-        setTimeout(() => coin.remove(), 1500 + (i * 100));
+        // Remover após a animação (mais curto agora)
+        setTimeout(() => coin.remove(), 800 + (i * 80));
     }
 }
 
