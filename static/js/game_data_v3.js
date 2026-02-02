@@ -44,7 +44,7 @@ const heroesData = [
 // Definição Manual de Skills para os Principais (Fiel ao Anime)
 const specificUpgrades = {
     1: [ // Naruto
-        { id: "h1_u1", reqLevel: 20, type: "SELF_DPS_MULT", value: 2, costMultiplier: 10, icon: "./static/img/skills/skill_1_1.png", name: "Kage Bunshin no Jutsu", desc: "Dano de Clique x2" },
+        { id: "h1_u1", reqLevel: 20, type: "SELF_DPS_MULT", value: 2, costMultiplier: 10, icon: "./static/img/skills/skill_1_1.png", name: "Kage Bunshin no Jutsu", desc: "DPS do Naruto x2" },
         { id: "h1_u2", reqLevel: 40, type: "SELF_DPS_MULT", value: 2, costMultiplier: 50, icon: "./static/img/skills/skill_1_2.png", name: "Tajuu Kage Bunshin", desc: "Dano de Clique x2" },
         { id: "h1_u3", reqLevel: 60, type: "GLOBAL_DPS_MULT", value: 1.1, costMultiplier: 200, icon: "./static/img/skills/skill_1_3.png", name: "Rasengan", desc: "DPS de Todos +10%" },
         { id: "h1_u4", reqLevel: 80, type: "CRIT_CHANCE", value: 0.01, costMultiplier: 1000, icon: "./static/img/skills/skill_1_4.png", name: "Chakra da Kyuubi", desc: "Chance Crítica +1%" }
@@ -126,15 +126,17 @@ const zoneData = {
     monstersPerZone: 10
 };
 
-const monsterNames = ["Ninja de Elite"];
-
-// Lista de variações do Ninja de Elite
-const monsterImages = [
-    "./static/img/enemies/enemy_main.png",
-    "./static/img/enemies/enemy_v4.png",
-    "./static/img/enemies/enemy_v5.png",
-    "./static/img/enemies/enemy_v6.png"
+// Cada sprite tem seu próprio nome único
+const enemyData = [
+    { name: "Akira", img: "./static/img/enemies/enemy_main.png" },
+    { name: "Kenji", img: "./static/img/enemies/enemy_v4.png" },
+    { name: "Ryu", img: "./static/img/enemies/enemy_v5.png" },
+    { name: "Takeshi", img: "./static/img/enemies/enemy_v6.png" }
 ];
+
+// Manter compatibilidade com código antigo
+const monsterNames = enemyData.map(e => e.name);
+const monsterImages = enemyData.map(e => e.img);
 
 // Imagem do Boss (aparece a cada 5 fases)
 const bossImage = "./static/img/enemies/boss.png";

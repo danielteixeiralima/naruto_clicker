@@ -195,18 +195,45 @@ body {
 
 /* Heroes List Expanded */
 
+/* Container de Moedas */
+.currency-display-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
 .gold-display-left {
     font-family: 'Bangers', cursive;
     font-size: 2.5em;
-    /* Bem grande */
     color: var(--gold-color);
     text-shadow: 2px 2px 0 #000;
     text-align: center;
-    margin-bottom: 20px;
     background: rgba(0, 0, 0, 0.6);
     padding: 10px;
     border-radius: 10px;
     border: 2px solid #8b4513;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.diamonds-display-left {
+    font-family: 'Bangers', cursive;
+    font-size: 2.5em;
+    color: #00d4ff;
+    text-shadow: 2px 2px 0 #000, 0 0 10px rgba(0, 212, 255, 0.5);
+    text-align: center;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid #0088cc;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 /* Header Panel (Equipe Ninja) */
@@ -464,6 +491,35 @@ body {
     z-index: 2;
 }
 
+/* Monster Name and Level Display */
+.monster-info {
+    text-align: center;
+    margin-top: 15px;
+    pointer-events: none;
+}
+
+.monster-name {
+    font-family: 'Shojumaru', cursive;
+    font-size: 2.2em;
+    color: #ff6600;
+    text-shadow: 3px 3px 0 #000, 0 0 10px rgba(255, 102, 0, 0.5);
+    margin-bottom: 5px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.monster-level {
+    font-family: 'Bangers', cursive;
+    font-size: 1.6em;
+    color: #ffd700;
+    text-shadow: 2px 2px 0 #000;
+    background: rgba(0, 0, 0, 0.6);
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 8px;
+    border: 2px solid #8b4513;
+}
+
 #damage-numbers-container {
     position: absolute;
     top: 0;
@@ -471,6 +527,8 @@ body {
     width: 100%;
     height: 100%;
     pointer-events: none;
+    z-index: 999;
+    /* Container acima do inimigo */
 }
 
 .damage-number {
@@ -480,6 +538,8 @@ body {
     color: #fff;
     text-shadow: 2px 2px 0 #000;
     animation: floatUp 1s ease-out forwards;
+    z-index: 1000;
+    /* Sempre na frente do inimigo */
 }
 
 .damage-crit {
@@ -1194,10 +1254,14 @@ hr {
     justify-content: center;
     cursor: pointer;
     position: relative;
-    overflow: hidden;
-    /* Cortar imagem nos cantos arredondados */
+    overflow: visible;
+    /* Permitir que o pergaminho ultrapasse */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     transition: transform 0.1s;
+    user-select: none;
+    /* Não selecionável */
+    outline: none;
+    /* Sem outline */
 }
 
 .skill-box:hover:not(.locked) {
@@ -1209,12 +1273,34 @@ hr {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 6px;
+    /* Arredondar cantos da imagem */
+    overflow: hidden;
+    /* Cortar imagem nos cantos */
+}
+
+.skill-icon {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    overflow: hidden;
+    /* Cortar conteúdo nos cantos arredondados */
 }
 
 .skill-box.locked {
     opacity: 0.3;
     filter: grayscale(1);
-    cursor: not-allowed;
+    cursor: pointer;
+}
+
+.skill-box.locked.affordable {
+    opacity: 0.6;
+    filter: grayscale(0.5);
+    border-color: #ffd700;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
 }
 
 .skill-box.available {
@@ -1223,8 +1309,20 @@ hr {
     animation: pulseBorder 1.5s infinite;
 }
 
+/* Missão em andamento - opacidade intermediária */
+.skill-box.available.in-progress {
+    opacity: 0.7;
+    filter: brightness(0.8) saturate(0.8);
+}
+
 .skill-box.bought {
     border-color: #00ff00;
+    cursor: pointer;
+    /* Clicável para ver buffs no modal */
+    user-select: none;
+    /* Não selecionável */
+    outline: none;
+    /* Sem outline */
 }
 
 .skill-check {
@@ -1235,6 +1333,96 @@ hr {
     font-size: 1.2em;
     font-weight: bold;
     text-shadow: 1px 1px 0 #000;
+}
+
+/* Ícone de missão em andamento */
+.skill-mission-active {
+    position: absolute;
+    top: -12px;
+    /* Mais para cima para ultrapassar */
+    right: -12px;
+    /* Mais para direita para ultrapassar */
+    font-size: 1.8em;
+    /* Maior para ser mais visível */
+    animation: scrollPulse 2s infinite;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 1)) drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+    z-index: 100;
+    /* Z-index muito alto para ficar acima de tudo */
+    opacity: 1 !important;
+    pointer-events: none;
+    /* Não interferir com cliques */
+}
+
+/* Garantir que o pergaminho não seja afetado pelo filtro da skill pai */
+.skill-box.in-progress .skill-mission-active {
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 1)) drop-shadow(0 0 10px rgba(255, 215, 0, 0.8)) !important;
+}
+
+@keyframes scrollPulse {
+
+    0%,
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    50% {
+        transform: scale(1.15) rotate(5deg);
+    }
+}
+
+/* Tooltip das habilidades */
+.skill-box .tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 2px solid #ffd700;
+    font-size: 0.9em;
+    white-space: normal;
+    /* Permitir quebras de linha */
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+    min-width: 200px;
+    max-width: 300px;
+    /* Largura máxima */
+    text-align: left;
+    line-height: 1.4;
+    /* Espaçamento entre linhas */
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+/* Seta do tooltip */
+.skill-box .tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: #ffd700;
+}
+
+
+/* Mostrar tooltip APENAS para skills completadas */
+.skill-box.bought:hover .tooltip {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Garantir que skills locked, available e in-progress NÃO mostrem tooltip */
+.skill-box.locked:hover .tooltip,
+.skill-box.available:hover .tooltip,
+.skill-box.in-progress:hover .tooltip {
+    visibility: hidden !important;
+    opacity: 0 !important;
 }
 
 /* API Button at Bottom Right */
@@ -1312,7 +1500,7 @@ hr {
 .backpack-icon {
     font-size: 1.2em;
     cursor: pointer;
-    margin-left: 10px;
+    margin-left: 20px;
     display: inline-block;
     transition: transform 0.2s ease, filter 0.2s ease;
     filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
@@ -1320,7 +1508,7 @@ hr {
 
 .backpack-icon:hover {
     transform: scale(1.15) rotate(-5deg);
-    filter: drop-shadow(3px 3px 6px rgba(255, 215, 0, 0.6));
+    filter: drop-shadow(3px 3px 6px rgba(139, 69, 19, 0.8));
 }
 
 .backpack-icon:active {
@@ -1355,6 +1543,24 @@ hr {
 
 /* ===== BACKPACK MODAL ===== */
 .backpack-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.backpack-modal.active {
+    display: flex;
+}
+
+.backpack-container {
     background: linear-gradient(135deg, #d4a574 0%, #c89860 50%, #b8885a 100%);
     border: 6px solid #8b6f47;
     border-radius: 20px;
@@ -1370,12 +1576,12 @@ hr {
 
 @keyframes modalSlideIn {
     from {
-        transform: scale(0.7) translateY(-50px);
+        transform: scale(0.7);
         opacity: 0;
     }
 
     to {
-        transform: scale(1) translateY(0);
+        transform: scale(1);
         opacity: 1;
     }
 }
@@ -1690,8 +1896,10 @@ hr {
 
 /* Item Icon Image in Inventory */
 .item-icon-img {
-    width: 100%;
-    height: 100%;
+    max-width: 50px;
+    max-height: 50px;
+    width: auto;
+    height: auto;
     object-fit: contain;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
@@ -1829,14 +2037,15 @@ hr {
 /* Grid de Inventário */
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    grid-template-columns: repeat(auto-fill, 70px);
     gap: 10px;
     padding: 5px;
 }
 
 /* Slots */
 .inventory-slot {
-    aspect-ratio: 1;
+    width: 70px;
+    height: 70px;
     background: linear-gradient(145deg, #242424 0%, #1a1a1a 100%);
     border: 1px solid #333;
     border-radius: 8px;
@@ -1847,6 +2056,7 @@ hr {
     transition: all 0.2s;
     cursor: default;
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
 }
 
 .inventory-slot.empty {
@@ -1874,8 +2084,11 @@ hr {
 
 /* Ícone do Item */
 .item-icon {
-    font-size: 2.2em;
+    font-size: 2em;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    max-width: 90%;
+    max-height: 90%;
+    line-height: 1;
 }
 
 /* Contador de Itens */
@@ -1906,4 +2119,379 @@ hr {
 
 .backpack-icon:hover {
     transform: scale(1.15);
+}
+
+/* ===== ANIMAÇÃO DE DIAMANTES ===== */
+.diamond-drop {
+    position: absolute;
+    font-size: 2em;
+    pointer-events: none;
+    z-index: 100;
+    animation: diamondFall 1s ease-out forwards;
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.8));
+}
+
+@keyframes diamondFall {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translateY(-30px) scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(60px) scale(0.5);
+        opacity: 0;
+    }
+}
+
+/* ===== MODAL DE MISSÃO ===== */
+.mission-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border: 4px solid #00d4ff;
+    border-radius: 20px;
+    box-shadow: 0 15px 50px rgba(0, 212, 255, 0.5),
+        inset 0 2px 10px rgba(0, 212, 255, 0.2);
+    width: 90%;
+    max-width: 700px;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modalSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.mission-header {
+    background: linear-gradient(135deg, #00d4ff 0%, #0088cc 100%);
+    padding: 15px 20px;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid #00ffff;
+}
+
+.mission-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Bangers', cursive;
+    font-size: 1.8em;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.close-mission {
+    background: rgba(255, 0, 0, 0.8);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 1.2em;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-mission:hover {
+    background: rgba(255, 0, 0, 1);
+    transform: scale(1.1);
+}
+
+.mission-body {
+    padding: 20px;
+}
+
+.mission-details {
+    color: #fff;
+}
+
+.mission-icon {
+    font-size: 4em;
+    text-align: center;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.8));
+}
+
+.mission-details h3 {
+    font-family: 'Bangers', cursive;
+    font-size: 2em;
+    text-align: center;
+    color: #00d4ff;
+    margin: 10px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.mission-subtitle {
+    text-align: center;
+    font-style: italic;
+    color: #aaa;
+    margin-bottom: 20px;
+}
+
+.mission-section {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 4px solid #00d4ff;
+    border-top: 4px solid #00d4ff;
+}
+
+.mission-section h4 {
+    margin: 0 0 8px 0;
+    color: #00d4ff;
+    font-size: 1.1em;
+}
+
+.mission-section p {
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Seção de Efeitos - Temática Vermelha */
+.mission-section-effect {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 4px solid #ff4444;
+    border-top: 4px solid #ff4444;
+}
+
+.mission-section-effect h4 {
+    margin: 0 0 8px 0;
+    color: #ff4444;
+    font-size: 1.1em;
+}
+
+.mission-section-effect p {
+    margin: 0;
+    line-height: 1.6;
+}
+
+.mission-section.bonus {
+    border-left-color: #6c9;
+    border-top-color: #6c9;
+    background: rgba(102, 204, 153, 0.15);
+}
+
+.mission-section.bonus h4 {
+    color: #6c9;
+}
+
+.mission-section.objective {
+    border-left-color: #f9c74f;
+    border-top-color: #f9c74f;
+    background: rgba(249, 199, 79, 0.15);
+}
+
+.mission-section.objective h4 {
+    color: #f9c74f;
+}
+
+.mission-section.reward {
+    border-left-color: #b565d8;
+    border-top-color: #b565d8;
+    background: rgba(181, 101, 216, 0.15);
+}
+
+.mission-section.reward h4 {
+    color: #b565d8;
+}
+
+.mission-cost {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 136, 204, 0.2));
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0 10px 0;
+    text-align: center;
+    border: 2px solid #00d4ff;
+}
+
+.cost-label {
+    display: block;
+    font-size: 0.9em;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+.cost-value {
+    display: block;
+    font-family: 'Bangers', cursive;
+    font-size: 2em;
+    color: #00d4ff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.player-diamonds {
+    text-align: center;
+    font-size: 1.1em;
+    margin-bottom: 20px;
+}
+
+.player-diamonds .enough {
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.player-diamonds .not-enough {
+    color: #ff0000;
+    font-weight: bold;
+}
+
+.mission-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.mission-btn {
+    padding: 12px 40px;
+    font-family: 'Bangers', cursive;
+    font-size: 1.3em;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.mission-btn.purchase {
+    background: linear-gradient(135deg, #00ff00, #00aa00);
+    color: #fff;
+    border: 2px solid #00ff00;
+}
+
+.mission-btn.purchase:hover:not(:disabled) {
+    background: linear-gradient(135deg, #00ff00, #00cc00);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+}
+
+.mission-btn.purchase:disabled {
+    background: #555;
+    border-color: #777;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Estilos para Missão Lendária (Skill 4) */
+.mission-part {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: 2px solid #8b4513;
+}
+
+.mission-part.completed {
+    background: rgba(0, 150, 0, 0.2);
+    border-color: #00ff00;
+}
+
+.mission-part h4 {
+    margin: 0 0 10px 0;
+    color: #ffd700;
+    font-family: 'Bangers', cursive;
+    font-size: 1.3em;
+}
+
+.mission-part p {
+    margin: 5px 0;
+    color: #fff;
+}
+
+.progress-bar {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    height: 30px;
+    margin: 10px 0;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #8b4513;
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #00ff00, #00aa00);
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 2px #000;
+    font-family: 'Bangers', cursive;
+    font-size: 1.1em;
+}
+
+.complete-part-btn {
+    background: linear-gradient(135deg, #00ff00, #00aa00);
+    color: #000;
+    border: 2px solid #00ff00;
+    padding: 10px 20px;
+    font-family: 'Bangers', cursive;
+    font-size: 1.2em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 10px 0;
+}
+
+.complete-part-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #00ff44, #00cc00);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.complete-part-btn:disabled {
+    background: #555;
+    border-color: #777;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.mission-section.legendary {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.2));
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* ========================================
+   SKILL BOX AFFORDABLE (DIAMANTES DISPONÍVEIS)
+   ======================================== */
+
+.skill-box.affordable {
+    background: linear-gradient(135deg, rgba(255, 220, 0, 0.4), rgba(255, 200, 0, 0.35)) !important;
+    border: 2px solid rgba(255, 200, 0, 0.8) !important;
+    box-shadow: 0 0 15px rgba(255, 200, 0, 0.5), inset 0 0 20px rgba(255, 220, 0, 0.3) !important;
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.skill-box.affordable:hover {
+    background: linear-gradient(135deg, rgba(255, 220, 0, 0.5), rgba(255, 200, 0, 0.45)) !important;
+    box-shadow: 0 0 20px rgba(255, 200, 0, 0.7), inset 0 0 25px rgba(255, 220, 0, 0.4) !important;
+    transform: scale(1.05);
+}
+
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 15px rgba(255, 200, 0, 0.5), inset 0 0 20px rgba(255, 220, 0, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 25px rgba(255, 200, 0, 0.7), inset 0 0 30px rgba(255, 220, 0, 0.4);
+    }
 }

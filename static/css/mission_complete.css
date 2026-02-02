@@ -1,0 +1,129 @@
+/* ===== MODAL DE CONCLUSÃO DE MISSÃO ===== */
+.mission-complete-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border: 4px solid #00ff00;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 255, 0, 0.5),
+        inset 0 2px 10px rgba(0, 255, 0, 0.2);
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    animation: missionCompleteSlideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    overflow: hidden;
+}
+
+@keyframes missionCompleteSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5) translateY(-50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.mission-complete-header {
+    background: linear-gradient(135deg, #00ff00 0%, #00aa00 100%);
+    padding: 20px;
+    text-align: center;
+    border-radius: 16px 16px 0 0;
+    border-bottom: 3px solid #00ff00;
+    position: relative;
+}
+
+.mission-complete-icon {
+    font-size: 4em;
+    animation: celebrationBounce 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes celebrationBounce {
+    0% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    100% {
+        transform: scale(1.2) rotate(10deg);
+    }
+}
+
+.mission-complete-header h2 {
+    font-family: 'Bangers', cursive;
+    font-size: 2em;
+    color: #fff;
+    margin: 10px 0 0 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.mission-complete-body {
+    padding: 30px 20px;
+    text-align: center;
+    color: #fff;
+}
+
+.skill-icon-large {
+    font-size: 6em;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.8));
+    animation: skillIconPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skillIconPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.8));
+    }
+
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 30px rgba(0, 212, 255, 1));
+    }
+}
+
+.mission-complete-body h3 {
+    font-family: 'Bangers', cursive;
+    font-size: 1.8em;
+    color: #00d4ff;
+    margin: 0 0 15px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.mission-complete-body p {
+    font-size: 1.1em;
+    color: #ccc;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.mission-complete-footer {
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mission-complete-btn {
+    background: linear-gradient(135deg, #00ff00, #00aa00);
+    color: #fff;
+    border: 2px solid #00ff00;
+    padding: 15px 40px;
+    font-family: 'Bangers', cursive;
+    font-size: 1.5em;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 4px 15px rgba(0, 255, 0, 0.4);
+}
+
+.mission-complete-btn:hover {
+    background: linear-gradient(135deg, #00ff44, #00cc00);
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 255, 0, 0.6);
+}
+
+.mission-complete-btn:active {
+    transform: scale(0.98);
+}

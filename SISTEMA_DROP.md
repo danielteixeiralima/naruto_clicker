@@ -1,99 +1,104 @@
-# Sistema de Drop de Itens - Naruto Clicker
+# Sistema de Drop do Kenji - Rasengan
 
-## Resumo da Implementação
+## Visão Geral
 
-Foi implementado um sistema completo de drop de itens no jogo Naruto Clicker com as seguintes características:
+Sistema especial de desbloqueio da terceira skill do Naruto (Rasengan) através de drops do inimigo Kenji.
 
-### Características Principais
+## Mecânica
 
-1. **Zona de Drop**: Arenas 10 a 15
-2. **Chance de Drop**: 2% por inimigo morto (muito raro!)
-3. **Restrição**: Apenas inimigos comuns dropam itens (bosses não dropam)
-4. **Item**: Frasco de Veneno
-5. **Destino**: O item vai automaticamente para a mochila do jogador
+### Drop do Fragmento
+- **Inimigo:** Kenji (um dos 4 sprites de inimigos normais)
+- **Chance de Drop:** 20% (0.20)
+- **Item:** Fragmento de Chakra 🔮
+- **Requisito:** Matar especificamente o inimigo Kenji
 
-### Arquivos Modificados
+### Desbloqueio da Skill
+- **Skill:** Rasengan (h1_u3)
+- **Requisito:** Coletar 10 Fragmentos de Chakra
+- **Efeito:** DPS de Todos +10%
+- **Desbloqueio:** Automático ao coletar o 10º fragmento
 
-#### 1. `static/js/game_v3.js`
-- **Função `monterDeath()`**: Adicionada lógica de drop de itens
-  - Verifica se o inimigo é um boss (zona múltipla de 5)
-  - Verifica se está na zona de drop (10-15)
-  - Gera número aleatório para chance de 20%
-  - Cria objeto do item dropado
-  - Adiciona ao inventário e mostra notificação
+## Implementação Técnica
 
-- **Função `addItemToInventory(newItem)`**: Nova função
-  - Verifica se o item já existe no inventário
-  - Se existe, incrementa a contagem
-  - Se não existe, adiciona em um slot vazio
-  - Retorna true/false para sucesso/falha
-  - Salva o jogo automaticamente
-
-- **Função `showItemDropNotification(item)`**: Nova função
-  - Cria notificação visual animada
-  - Mostra ícone do item, texto "ITEM DROPADO!" e nome do item
-  - Desaparece automaticamente após 3 segundos
-
-- **Função `renderInventory()`**: Atualizada
-  - Suporta tanto emojis quanto imagens como ícones
-  - Renderiza corretamente itens com imagens
-
-- **Funções `saveGame()` e `loadGame()`**: Atualizadas
-  - Agora salvam e carregam o inventário do localStorage
-
-#### 2. `static/css/style.css`
-- **`.item-drop-notification`**: Estilos para notificação de drop
-  - Fundo escuro com borda dourada brilhante
-  - Animações de aparecimento e desaparecimento
-  - Centralizado na tela
-  - Z-index alto para ficar sobre tudo
-
-- **`.item-icon-img`**: Estilos para imagens de itens no inventário
-  - Tamanho 100% do slot
-  - Object-fit contain para manter proporções
-  - Drop shadow para destaque
-
-#### 3. `static/img/items/poison.png`
-- Imagem do frasco de veneno criada
-- Estilo pixel art com líquido verde brilhante
-- Caveira no rótulo
-- Fundo transparente
-
-### Como Funciona
-
-1. Quando um inimigo comum (não boss) é morto nas arenas 10-15:
-   - O jogo gera um número aleatório
-   - Se for menor que 0.20 (20%), um item dropa
-
-2. Quando um item dropa:
-   - É criado um objeto com as propriedades do item
-   - O item é adicionado ao inventário via `addItemToInventory()`
-   - Uma notificação visual aparece na tela
-   - O jogo é salvo automaticamente
-
-3. O inventário:
-   - Itens idênticos são empilhados (count aumenta)
-   - Itens diferentes ocupam slots separados
-   - Máximo de 40 slots
-   - Persistido no localStorage
-
-### Exemplo de Item Dropado
-
+### 1. GameState
 ```javascript
-{
-    icon: './static/img/items/poison.png',
-    name: 'Frasco de Veneno',
-    description: 'Um veneno mortal usado por ninjas',
-    count: 1,
-    isImage: true
+gameState.kenjiFragments = 0; // Contador de fragmentos
+gameState.currentEnemyName = ""; // Nome do inimigo atual
+```
+
+### 2. Sistema de Drop (monterDeath)
+```javascript
+if (gameState.currentEnemyName === "Kenji" && Math.random() < 0.20) {
+    // Drop do fragmento
+    gameState.kenjiFragments++;
+    
+    // Verificar desbloqueio
+    if (gameState.kenjiFragments >= 10 && !gameState.upgrades.includes('h1_u3')) {
+        unlockNarutoRasengan();
+    }
 }
 ```
 
-### Próximos Passos Possíveis
+### 3. Renderização da Skill
+- **Bloqueada:** Exibe progresso de fragmentos (X/10)
+- **Disponível:** Quando kenjiFragments >= 10
+- **Tooltip:** Mostra contador e instrução para matar Kenji
 
-1. Adicionar mais tipos de itens com diferentes raridades
-2. Implementar efeitos dos itens (buffs, dano extra, etc.)
-3. Adicionar diferentes chances de drop por arena
-4. Criar sistema de uso de itens
-5. Adicionar sons quando itens dropam
-6. Criar diferentes pools de itens por zona
+### 4. Verificação de Compra
+```javascript
+if (upgId === 'h1_u3') {
+    if (gameState.kenjiFragments < 10) {
+        return; // Bloqueia compra
+    }
+}
+```
+
+### 5. Persistência
+- Fragmentos salvos em `localStorage`
+- Carregados automaticamente ao iniciar o jogo
+
+## Características
+
+✅ **Drop Específico:** Apenas Kenji dropa fragmentos
+✅ **Chance Balanceada:** 20% de chance por morte
+✅ **Progresso Visível:** Tooltip mostra X/10 fragmentos
+✅ **Desbloqueio Automático:** Skill liberada ao coletar 10
+✅ **Notificação Especial:** Animação ao desbloquear Rasengan
+✅ **Persistência:** Progresso salvo automaticamente
+
+## Fluxo do Jogador
+
+1. **Encontrar Kenji:** Jogar até spawnar o inimigo Kenji
+2. **Matar Kenji:** 20% de chance de dropar fragmento
+3. **Coletar Fragmentos:** Acumular até 10 fragmentos
+4. **Desbloqueio:** Rasengan é automaticamente desbloqueado
+5. **Compra:** Pode comprar a skill normalmente com ouro
+
+## Diferenças das Outras Skills
+
+| Aspecto | Skills Normais | Rasengan (h1_u3) |
+|---------|---------------|------------------|
+| Requisito | Nível do herói | 10 Fragmentos do Kenji |
+| Desbloqueio | Ao atingir nível | Ao coletar fragmentos |
+| Compra | Manual com ouro | Manual após desbloquear |
+| Tooltip | Apenas custo | Custo + Progresso de fragmentos |
+
+## Mensagens do Sistema
+
+### Console
+- `🔮 Fragmento de Chakra coletado! Total: X/10`
+- `🌀 Desbloqueando Rasengan!`
+- `✅ Rasengan desbloqueado com sucesso!`
+- `❌ Você precisa de 10 Fragmentos de Chakra para desbloquear o Rasengan!`
+
+### Notificações Visuais
+1. **Drop de Fragmento:** Notificação padrão de item
+2. **Desbloqueio:** Notificação especial com emoji 🌀 e duração de 5s
+
+## Balanceamento
+
+- **Chance de Kenji spawnar:** 1/4 (25%)
+- **Chance de drop:** 20%
+- **Chance efetiva por inimigo:** 5%
+- **Média de inimigos para 10 fragmentos:** ~200 mortes
+- **Tempo estimado:** Variável, depende do DPS do jogador

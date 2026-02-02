@@ -1,0 +1,293 @@
+/* ========================================
+   ADMIN PANEL STYLES
+   ======================================== */
+
+/* Admin Trigger Button */
+#admin-trigger {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    z-index: 9999;
+}
+
+#admin-trigger:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+/* Admin Modal */
+.admin-modal {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 3px solid #ffd700;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.admin-modal .modal-header {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #ffd700;
+}
+
+.admin-modal .modal-header h2 {
+    margin: 0;
+    color: #fff;
+    font-family: 'Bangers', cursive;
+    font-size: 2em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.admin-modal .modal-close {
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.admin-modal .modal-close:hover {
+    transform: scale(1.1);
+    background: #ff0000;
+}
+
+.admin-modal .modal-body {
+    padding: 20px;
+}
+
+/* Admin Sections */
+.admin-section {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-section h3 {
+    margin: 0 0 15px 0;
+    color: #ffd700;
+    font-family: 'Bangers', cursive;
+    font-size: 1.5em;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Input Groups */
+.admin-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.admin-input-group label {
+    color: #fff;
+    font-weight: bold;
+    min-width: 150px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.admin-input-group input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ffd700;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    font-size: 1em;
+    font-family: 'Roboto', sans-serif;
+}
+
+.admin-input-group input:focus {
+    outline: none;
+    border-color: #00ff00;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+/* Admin Buttons */
+.admin-btn {
+    background: linear-gradient(to bottom, #ffd700 0%, #ffb700 100%);
+    border: 2px solid #ff9800;
+    border-radius: 8px;
+    padding: 10px 20px;
+    color: #000;
+    font-weight: bold;
+    font-family: 'Bangers', cursive;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 4px 0 #d4a000;
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.admin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #d4a000;
+}
+
+.admin-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #d4a000;
+}
+
+.admin-btn.full-width {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Skill Rows */
+.admin-skill-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.skill-label {
+    color: #fff;
+    font-weight: bold;
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.1em;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.skill-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.admin-skill-btn {
+    background: linear-gradient(to bottom, #4CAF50 0%, #45a049 100%);
+    border: 2px solid #2e7d32;
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: white;
+    font-weight: bold;
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 3px 0 #2e7d32;
+    white-space: nowrap;
+}
+
+.admin-skill-btn.unlock {
+    background: linear-gradient(to bottom, #4CAF50 0%, #45a049 100%);
+    border-color: #2e7d32;
+    box-shadow: 0 3px 0 #2e7d32;
+}
+
+.admin-skill-btn.lock {
+    background: linear-gradient(to bottom, #f44336 0%, #d32f2f 100%);
+    border-color: #b71c1c;
+    box-shadow: 0 3px 0 #b71c1c;
+}
+
+.admin-skill-btn:hover {
+    transform: translateY(-2px);
+}
+
+.admin-skill-btn.unlock:hover {
+    box-shadow: 0 5px 0 #2e7d32;
+}
+
+.admin-skill-btn.lock:hover {
+    box-shadow: 0 5px 0 #b71c1c;
+}
+
+.admin-skill-btn:active {
+    transform: translateY(2px);
+}
+
+.admin-skill-btn.unlock:active {
+    box-shadow: 0 1px 0 #2e7d32;
+}
+
+.admin-skill-btn.lock:active {
+    box-shadow: 0 1px 0 #b71c1c;
+}
+
+.admin-btn.lock-all {
+    background: linear-gradient(to bottom, #f44336 0%, #d32f2f 100%);
+    border-color: #b71c1c;
+    box-shadow: 0 4px 0 #b71c1c;
+}
+
+.admin-btn.lock-all:hover {
+    box-shadow: 0 6px 0 #b71c1c;
+}
+
+.admin-btn.lock-all:active {
+    box-shadow: 0 2px 0 #b71c1c;
+}
+
+/* Quick Zones */
+.admin-quick-zones {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.admin-quick-btn {
+    background: linear-gradient(to bottom, #2196F3 0%, #1976D2 100%);
+    border: 2px solid #0d47a1;
+    border-radius: 8px;
+    padding: 10px;
+    color: white;
+    font-weight: bold;
+    font-family: 'Roboto', sans-serif;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 3px 0 #0d47a1;
+}
+
+.admin-quick-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 #0d47a1;
+}
+
+.admin-quick-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #0d47a1;
+}
+
+/* Scrollbar Customization */
+.admin-modal::-webkit-scrollbar {
+    width: 10px;
+}
+
+.admin-modal::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.admin-modal::-webkit-scrollbar-thumb {
+    background: #ffd700;
+    border-radius: 10px;
+}
+
+.admin-modal::-webkit-scrollbar-thumb:hover {
+    background: #ffed4e;
+}

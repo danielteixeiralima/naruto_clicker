@@ -24,12 +24,65 @@ const gameState = {
     lastEnemyIndex: -1, // Para evitar repetição consecutiva
     inventory: [], // Mochila de itens
     bossTimer: 30, // Cronômetro de boss (30 segundos)
-    bossTimerInterval: null // Referência ao intervalo do cronômetro
+    bossTimerInterval: null, // Referência ao intervalo do cronômetro
+    currentEnemyName: "", // Nome do inimigo atual para sistema de drop
+    diamonds: 0, // Contador de diamantes
+    zoneProgress: {}, // Rastreia quantos monstros foram mortos em cada zona (ex: {1: 10, 2: 5, 3: 10})
+    missions: {
+        naruto_skill1: {
+            id: "naruto_skill1",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 150,
+            cost: 5
+        },
+        naruto_skill2: {
+            id: "naruto_skill2",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 30,
+            cost: 15
+        },
+        naruto_skill3: {
+            id: "naruto_skill3",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 80,
+            cost: 40
+        },
+        naruto_skill4: {
+            id: "naruto_skill4",
+            purchased: false,
+            completed: false,
+            cost: 120,
+            // Parte 1: Selos Quebrados
+            part1: {
+                completed: false,
+                progress: 0,
+                target: 100 // 100 Fragmentos de Selo Enfraquecido
+            },
+            // Parte 2: O Chakra Vermelho Responde ao Ódio
+            part2: {
+                completed: false,
+                progress: 0,
+                target: 8 // 8 Resíduos de Chakra da Kyūbi
+            },
+            // Parte 3: Controle Instável
+            part3: {
+                completed: false,
+                goldOffered: false // 15.000.000 Gold entregue
+            }
+        }
+    }
 };
 
 // Configurações
 const TICKS_PER_SECOND = 10;
 let autoSaveInterval;
+let lastUpdateTime = Date.now(); // Rastrear última atualização para progresso offline
 
 // Inicialização
 function initGame() {
@@ -174,7 +227,7 @@ function renderHeroesList() {
 
         let leftColHTML = `
             <div class="card-left-col">
-                <div class="hero-image-wrapper">
+                <div class="hero-image-wrapper" ${!isLocked ? `onclick="openHeroDetailsModal(${hero.id})" style="cursor: pointer;"` : ''}>
                     <img src="${displayImg}" class="hero-full-body-img" alt="${displayName}" ${focusStyle}>
                 </div>
             </div>
@@ -195,7 +248,43 @@ function renderHeroesList() {
             const dpsIncrement = Math.abs(nextLevelDps - dpsVal);
 
             if (hero.id === 1) {
-                statsHTML = `<div class="stat-line"><strong>Dano de Clique:</strong> <span id="hero-stat-val-${hero.id}">${formatNumber(dpsVal)}</span> <span class="dps-increment">+${formatNumber(dpsIncrement)}</span></div>`;
+                // Calcular dano bruto com buffs das skills
+                let clickDamageWithBuffs = dpsVal;
+                const heroUps = heroUpgrades[hero.id];
+                if (heroUps) {
+                    heroUps.forEach(upg => {
+                        if (gameState.upgrades.includes(upg.id) && upg.type === 'SELF_DPS_MULT') {
+                            clickDamageWithBuffs *= upg.value;
+                        }
+                    });
+                }
+
+                // Calcular dano elemental (Vento = +15% por skill completada)
+                let elementalDamage = 0;
+                let elementalCount = 0;
+                if (gameState.missions.naruto_skill1?.completed) elementalCount++;
+                if (gameState.missions.naruto_skill2?.completed) elementalCount++;
+                if (gameState.missions.naruto_skill3?.completed) elementalCount++;
+                if (gameState.missions.naruto_skill4?.completed) elementalCount++;
+
+                if (elementalCount > 0) {
+                    elementalDamage = clickDamageWithBuffs * (0.15 * elementalCount);
+                }
+
+                const nextLevelClickDamage = hero.baseDps * Math.pow(1.07, hero.level + 1);
+                const clickIncrement = Math.abs(nextLevelClickDamage - dpsVal);
+
+                statsHTML = `
+                    <div class="stat-line">
+                        <strong>Dano de Clique:</strong> 
+                        <span id="hero-stat-val-${hero.id}">${formatNumber(clickDamageWithBuffs)}</span> 
+                        <span class="dps-increment">+${formatNumber(clickIncrement)}</span>
+                    </div>
+                    ${elementalDamage > 0 ? `<div class="stat-line elemental-wind">
+                        <strong>💨 Dano Elemental (Vento):</strong> 
+                        <span style="color: #00ff00;">+${formatNumber(elementalDamage)}</span>
+                    </div>` : ''}
+                `;
             } else {
                 statsHTML = `<div class="stat-line"><strong>Dano por Segundo:</strong> <span id="hero-stat-val-${hero.id}">${formatNumber(dpsVal)}</span> <span class="dps-increment">+${formatNumber(dpsIncrement)}</span></div>`;
             }
@@ -225,12 +314,241 @@ function renderHeroesList() {
             if (upgrades) {
                 upgrades.forEach(upg => {
                     const isBought = gameState.upgrades.includes(upg.id);
-                    const isUnlocked = hero.level >= upg.reqLevel;
+
+                    // Lógica especial para Kage Bunshin (h1_u1) - Sistema de Missão
+                    let isUnlocked;
+                    let tooltipExtra = '';
+                    let clickHandler = `buyUpgrade('${upg.id}', ${hero.baseCost * upg.costMultiplier}, ${hero.id})`;
+
+                    if (upg.id === 'h1_u1') {
+                        const mission = gameState.missions.naruto_skill1;
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            // Missão não comprada - mostrar custo em diamantes
+                            clickHandler = `openMissionModal('naruto_skill1')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(0,100,200,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão: "Treino dos Clones na Floresta"</strong><br>
+                                <span style="color: #00d4ff;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Objetivo:</strong><br>
+                                Derrotar 150 inimigos normais<br>
+                                nas fases 1-10 usando apenas clique<br><br>
+                                <strong>💥 Bônus Elemental (Vento):</strong><br>
+                                +15% de dano adicional
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            // Missão comprada mas não completada - mostrar progresso
+                            clickHandler = `openMissionModal('naruto_skill1')`;
+                            const progressPercent = Math.floor((mission.progress / mission.target) * 100);
+                            tooltipExtra = `<br><br><div style="background: rgba(0,150,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão em Andamento</strong><br>
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${progressPercent}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                        ${mission.progress}/${mission.target}
+                                    </span>
+                                </div>
+                                <small>Derrote inimigos nas fases 1-10 usando apenas clique!</small>
+                            </div>`;
+                        } else if (mission.completed) {
+                            // Missão completada - pode comprar normalmente
+                            clickHandler = `openMissionModal('naruto_skill1')`;
+                            tooltipExtra = `<br><br><span style="color: #00ff00;">✅ Missão Completada!</span>`;
+                        }
+                    } else if (upg.id === 'h1_u2') {
+                        // Lógica especial para Tajuu Kage Bunshin (h1_u2) - Sistema de Missão
+                        const mission = gameState.missions.naruto_skill2;
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            // Missão não comprada - mostrar custo em diamantes
+                            clickHandler = `openMissionModal('naruto_skill2')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(0,100,200,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão: "Exército de Clones"</strong><br>
+                                <span style="color: #00d4ff;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Objetivo:</strong><br>
+                                Coletar 30 Pergaminhos Rasgados de Clone<br>
+                                nas fases 20-40 (8% de chance)<br><br>
+                                <strong>💥 Bônus Elemental (Vento):</strong><br>
+                                +15% de dano adicional
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            // Missão comprada mas não completada - mostrar progresso
+                            clickHandler = `openMissionModal('naruto_skill2')`;
+                            const progressPercent = Math.floor((mission.progress / mission.target) * 100);
+                            tooltipExtra = `<br><br><div style="background: rgba(0,150,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão em Andamento</strong><br>
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${progressPercent}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                        ${mission.progress}/${mission.target}
+                                    </span>
+                                </div>
+                                <small>Colete Pergaminhos nas fases 20-40!</small>
+                            </div>`;
+                        } else if (mission.completed) {
+                            // Missão completada - pode comprar normalmente
+                            clickHandler = `openMissionModal('naruto_skill2')`;
+                            tooltipExtra = `<br><br><span style="color: #00ff00;">✅ Missão Completada!</span>`;
+                        }
+                    } else if (upg.id === 'h1_u3') {
+                        // Lógica especial para Rasengan (h1_u3) - Sistema de Missão
+                        let mission = gameState.missions.naruto_skill3;
+
+                        // Verificação de segurança: se a missão não existe no save, criar
+                        if (!mission) {
+                            gameState.missions.naruto_skill3 = {
+                                id: "naruto_skill3",
+                                purchased: false,
+                                completed: false,
+                                progress: 0,
+                                target: 80,
+                                cost: 40
+                            };
+                            mission = gameState.missions.naruto_skill3; // Reatribuir após criar
+                        }
+
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            // Missão não comprada - mostrar custo em diamantes
+                            clickHandler = `openMissionModal('naruto_skill3')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(0,100,200,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão: "Dominar a Rotação do Chakra"</strong><br>
+                                <span style="color: #00d4ff;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Objetivo:</strong><br>
+                                Coletar 80 Núcleos de Chakra Espiral<br>
+                                nas fases 50-80 (6% de chance)<br><br>
+                                <strong>💥 Efeito:</strong><br>
+                                DPS de todos os heróis +15%<br>
+                                Bosses recebem +35% dano de Vento<br>
+                                Naruto ganha +10% dano adicional contra inimigos de Raio
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            // Missão comprada mas não completada - mostrar progresso
+                            clickHandler = `openMissionModal('naruto_skill3')`;
+                            const progressPercent = Math.floor((mission.progress / mission.target) * 100);
+                            tooltipExtra = `<br><br><div style="background: rgba(0,150,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão em Andamento</strong><br>
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${progressPercent}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                        ${mission.progress}/${mission.target}
+                                    </span>
+                                </div>
+                                <small>Colete Núcleos de Chakra Espiral nas fases 50-80!</small>
+                            </div>`;
+                        } else if (mission.completed) {
+                            // Missão completada - pode comprar normalmente
+                            clickHandler = `openMissionModal('naruto_skill3')`;
+                            tooltipExtra = `<br><br><span style="color: #00ff00;">✅ Missão Completada!</span>`;
+                        }
+                    } else if (upg.id === 'h1_u4') {
+                        // Lógica especial para Modo Sábio (h1_u4) - Missão Lendária com 3 Partes
+                        let mission = gameState.missions.naruto_skill4;
+
+                        // Verificação de segurança: se a missão não existe no save, criar
+                        if (!mission) {
+                            gameState.missions.naruto_skill4 = {
+                                id: "naruto_skill4",
+                                purchased: false,
+                                completed: false,
+                                cost: 120,
+                                part1: { completed: false, progress: 0, target: 12 },
+                                part2: { completed: false, bossDefeated: false },
+                                part3: { completed: false, goldOffered: false }
+                            };
+                            mission = gameState.missions.naruto_skill4;
+                        }
+
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            // Missão não comprada - mostrar custo em diamantes
+                            clickHandler = `openMissionModal('naruto_skill4')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(200,0,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão Lendária: "O Chakra Vermelho Começa a Vazar…"</strong><br>
+                                <span style="color: #ff4444;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Missão em 3 Partes:</strong><br>
+                                Parte 1: Selos Quebrados<br>
+                                Parte 2: O Chakra Vermelho Responde ao Ódio<br>
+                                Parte 3: Controle Instável<br><br>
+                                <strong>💥 Recompensa Final:</strong><br>
+                                Chakra da Kyūbi ( 1 Cauda )
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            // Missão comprada mas não completada - mostrar progresso das partes
+                            clickHandler = `openMissionModal('naruto_skill4')`;
+
+                            let partsCompleted = 0;
+                            if (mission.part1.completed) partsCompleted++;
+                            if (mission.part2.completed) partsCompleted++;
+                            if (mission.part3.completed) partsCompleted++;
+
+                            tooltipExtra = `<br><br><div style="background: rgba(200,0,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão Lendária em Andamento</strong><br>
+                                <strong>Progresso: ${partsCompleted}/3 Partes Completas</strong><br><br>
+                                <small>Clique para ver detalhes</small>
+                            </div>`;
+                        } else if (mission.completed) {
+                            // Missão completada - pode comprar normalmente
+                            clickHandler = `openMissionModal('naruto_skill4')`;
+                            tooltipExtra = `<br><br><span style="color: #ff4444;">✅ Missão Lendária Completada!</span>`;
+                        }
+                    } else {
+                        isUnlocked = hero.level >= upg.reqLevel;
+                    }
 
                     let upgClass = 'skill-box';
-                    if (isBought) upgClass += ' bought';
+
+                    // Verificação especial para missões completadas
+                    let missionCompleted = false;
+                    if (upg.id === 'h1_u1' && gameState.missions.naruto_skill1?.completed) missionCompleted = true;
+                    if (upg.id === 'h1_u2' && gameState.missions.naruto_skill2?.completed) missionCompleted = true;
+                    if (upg.id === 'h1_u3' && gameState.missions.naruto_skill3?.completed) missionCompleted = true;
+                    if (upg.id === 'h1_u4' && gameState.missions.naruto_skill4?.completed) missionCompleted = true;
+
+                    // Verificação para missões compradas (em andamento)
+                    let missionPurchased = false;
+                    if (upg.id === 'h1_u1' && gameState.missions.naruto_skill1?.purchased && !gameState.missions.naruto_skill1?.completed) missionPurchased = true;
+                    if (upg.id === 'h1_u2' && gameState.missions.naruto_skill2?.purchased && !gameState.missions.naruto_skill2?.completed) missionPurchased = true;
+                    if (upg.id === 'h1_u3' && gameState.missions.naruto_skill3?.purchased && !gameState.missions.naruto_skill3?.completed) missionPurchased = true;
+                    if (upg.id === 'h1_u4' && gameState.missions.naruto_skill4?.purchased && !gameState.missions.naruto_skill4?.completed) missionPurchased = true;
+
+                    if (isBought || missionCompleted) upgClass += ' bought';
+                    else if (missionPurchased) upgClass += ' available in-progress';
                     else if (isUnlocked) upgClass += ' available';
-                    else upgClass += ' locked';
+                    else {
+                        upgClass += ' locked';
+                        // Se for a skill 1 do Naruto e tiver diamantes suficientes, adicionar classe affordable
+                        if (upg.id === 'h1_u1') {
+                            const mission = gameState.missions.naruto_skill1;
+                            if (!mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                        // Se for a skill 2 do Naruto e tiver diamantes suficientes, adicionar classe affordable
+                        if (upg.id === 'h1_u2') {
+                            const mission = gameState.missions.naruto_skill2;
+                            if (!mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                        // Se for a skill 3 do Naruto e tiver diamantes suficientes, adicionar classe affordable
+                        if (upg.id === 'h1_u3') {
+                            const mission = gameState.missions.naruto_skill3;
+                            if (mission && !mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                        // Se for a skill 4 do Naruto e tiver diamantes suficientes, adicionar classe affordable
+                        if (upg.id === 'h1_u4') {
+                            const mission = gameState.missions.naruto_skill4;
+                            if (mission && !mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                    }
 
                     const upgCost = hero.baseCost * upg.costMultiplier;
 
@@ -238,17 +556,32 @@ function renderHeroesList() {
                     const isImageIcon = upg.icon.startsWith('./') || upg.icon.startsWith('http');
                     const iconContent = isImageIcon ? `<img src="${upg.icon}" class="skill-img-icon">` : upg.icon;
 
+                    // Todas as habilidades são clicáveis para abrir modal
+                    const onclickAttr = `onclick="${clickHandler}"`;
+
+
+                    // Adicionar atributos data para hover em missões completadas
+                    let missionId = '';
+                    let isCompleted = false;
+                    if (upg.id === 'h1_u1') { missionId = 'naruto_skill1'; isCompleted = gameState.missions.naruto_skill1?.completed; }
+                    if (upg.id === 'h1_u2') { missionId = 'naruto_skill2'; isCompleted = gameState.missions.naruto_skill2?.completed; }
+                    if (upg.id === 'h1_u3') { missionId = 'naruto_skill3'; isCompleted = gameState.missions.naruto_skill3?.completed; }
+                    if (upg.id === 'h1_u4') { missionId = 'naruto_skill4'; isCompleted = gameState.missions.naruto_skill4?.completed; }
+
+                    const dataAttrs = missionId ? `data-mission-id="${missionId}" data-completed="${isCompleted}"` : '';
+
                     skillsHTML += `
                         <div class="${upgClass}" 
                              id="upg-${upg.id}"
-                             onclick="buyUpgrade('${upg.id}', ${upgCost}, ${hero.id})">
+                             ${onclickAttr}
+                             ${dataAttrs}>
                              <div class="skill-icon">${iconContent}</div>
-                             ${isBought ? '<div class="skill-check">✔</div>' : ''}
-                             <div class="tooltip">
+                             ${missionPurchased ? '<div class="skill-mission-active">📜</div>' : ''}
+                             ${!isCompleted ? `<div class="tooltip">
                                 <strong>${upg.name}</strong><br>
                                 ${upg.desc}<br>
-                                Custo: ${formatNumber(upgCost)}
-                             </div>
+                                ${isUnlocked && !isBought ? 'Custo: ' + formatNumber(upgCost) : ''}${tooltipExtra}
+                             </div>` : ''}
                         </div>
                     `;
                 });
@@ -359,7 +692,8 @@ function changeZone(direction) {
     if (direction === 'next') {
         if (gameState.currentZone < gameState.statistics.maxZone) {
             gameState.currentZone++;
-            gameState.monstersKilledInZone = 0;
+            // Carregar progresso da zona ou iniciar em 0
+            gameState.monstersKilledInZone = gameState.zoneProgress[gameState.currentZone] || 0;
             spawnMonster();
             renderArenas();
             updateUI();
@@ -367,7 +701,8 @@ function changeZone(direction) {
     } else if (direction === 'prev') {
         if (gameState.currentZone > 1) {
             gameState.currentZone--;
-            gameState.monstersKilledInZone = 0;
+            // Carregar progresso da zona ou iniciar em 0
+            gameState.monstersKilledInZone = gameState.zoneProgress[gameState.currentZone] || 0;
             spawnMonster();
             renderArenas();
             updateUI();
@@ -380,16 +715,19 @@ function renderArenas() {
     if (!container) return; // Safety
     container.innerHTML = '';
 
+    // Sempre mostrar 5 zonas: 2 antes, atual, 2 depois
+    // Ajustar para as primeiras zonas (1 e 2)
     let startZone = Math.max(1, gameState.currentZone - 2);
-    let endZone = Math.max(gameState.currentZone + 2, gameState.statistics.maxZone + 1);
+    let endZone = startZone + 4; // Sempre 5 zonas no total
 
-    if (endZone - startZone < 4) {
-        endZone = startZone + 4;
+    // Se estamos nas primeiras zonas, ajustar para sempre ter 5 zonas
+    if (startZone === 1) {
+        endZone = 5;
+    } else if (startZone === 2) {
+        endZone = 6;
     }
 
     for (let z = startZone; z <= endZone; z++) {
-        if (z > gameState.statistics.maxZone + 1 && z > 1) continue;
-
         const box = document.createElement('div');
         box.className = 'arena-box';
         box.textContent = z;
@@ -429,10 +767,14 @@ function spawnMonster() {
     // A fase 5 (boss) não conta, então fase 6 = progressão 5
     // A fase 10 (boss) não conta, então fase 11 = progressão 9
 
+
     let effectiveZone;
     if (isBossZone) {
-        // Boss: usar a zona anterior (que não é boss)
-        effectiveZone = gameState.currentZone - 1;
+        // Boss: calcular HP baseado na zona anterior (último inimigo normal)
+        // Zona anterior considerando bosses já passados
+        const previousZone = gameState.currentZone - 1;
+        const bossPhasesPassed = Math.floor((previousZone - 1) / 5);
+        effectiveZone = previousZone - bossPhasesPassed;
     } else {
         // Inimigo normal: calcular quantas fases de boss já passaram
         const bossPhasesPassed = Math.floor((gameState.currentZone - 1) / 5);
@@ -458,17 +800,19 @@ function spawnMonster() {
 
     gameState.currentMonster.hp = gameState.currentMonster.maxHp;
 
-    const randomName = monsterNames[Math.floor(Math.random() * monsterNames.length)];
-    gameState.currentMonster.name = `${randomName} (Lv. ${gameState.currentZone})`;
+    // Para boss, usar nome genérico
+    let enemyName = "Boss";
+    let enemyIndex = -1;
 
     const nameEl = document.getElementById('monster-name');
-    if (nameEl) nameEl.textContent = gameState.currentMonster.name;
+    const levelEl = document.getElementById('monster-level');
 
     const imgEl = document.getElementById('monster-img');
     if (imgEl) {
         if (isBossZone) {
             // Boss: usa imagem especial
             imgEl.src = bossImage;
+            enemyName = "Boss";
 
             // Iniciar cronômetro de boss
             startBossTimer();
@@ -483,11 +827,13 @@ function spawnMonster() {
             // Inimigo normal: lógica para evitar repetir o mesmo monstro em seguida
             let newIdx;
             do {
-                newIdx = Math.floor(Math.random() * monsterImages.length);
-            } while (newIdx === gameState.lastEnemyIndex && monsterImages.length > 1);
+                newIdx = Math.floor(Math.random() * enemyData.length);
+            } while (newIdx === gameState.lastEnemyIndex && enemyData.length > 1);
 
             gameState.lastEnemyIndex = newIdx;
-            imgEl.src = monsterImages[newIdx];
+            enemyIndex = newIdx;
+            imgEl.src = enemyData[newIdx].img;
+            enemyName = enemyData[newIdx].name;
 
             // Parar cronômetro se estiver rodando
             stopBossTimer();
@@ -513,6 +859,12 @@ function spawnMonster() {
 
         imgEl.style.transform = `scale(${sizeMultiplier})`;
     }
+
+    // Atualizar nome e nível do monstro
+    gameState.currentMonster.name = enemyName;
+    gameState.currentEnemyName = enemyName; // Salvar para sistema de drop
+    if (nameEl) nameEl.textContent = enemyName;
+    if (levelEl) levelEl.textContent = `Nível ${gameState.currentZone}`;
 
     updateMonsterUI();
 }
@@ -553,6 +905,40 @@ function monterDeath() {
     gameState.gold += goldDrop;
     gameState.statistics.totalKills++;
 
+    // ========================================
+    // PROGRESSO DA SKILL 1 - KAGE BUNSHIN NO JUTSU
+    // ========================================
+    // Contar qualquer morte de inimigo (não precisa ser por clique)
+    const skill1Mission = gameState.missions.naruto_skill1;
+    if (skill1Mission && skill1Mission.purchased && !skill1Mission.completed) {
+        skill1Mission.progress++;
+
+        // Verificar se completou a missão
+        if (skill1Mission.progress >= skill1Mission.target) {
+            skill1Mission.progress = skill1Mission.target;
+            skill1Mission.completed = true;
+
+            console.log('🎉 Missão Kage Bunshin no Jutsu completada!');
+
+            // Desbloquear a habilidade automaticamente
+            const upgradeId = 'h1_u1';
+            if (!gameState.upgrades.includes(upgradeId)) {
+                gameState.upgrades.push(upgradeId);
+                console.log(`✅ Habilidade ${upgradeId} desbloqueada automaticamente!`);
+            }
+
+            // Mostrar modal de conclusão
+            showMissionCompleteModal(
+                'Kage Bunshin no Jutsu',
+                '🌀',
+                'Você completou a missão e desbloqueou o Kage Bunshin no Jutsu! A habilidade já está disponível para uso.'
+            );
+
+            renderHeroesList();
+            saveGame();
+        }
+    }
+
     // Animação de moedas caindo
     createGoldCoins(goldDrop);
 
@@ -575,7 +961,10 @@ function monterDeath() {
         // Inimigo normal: incrementar contador
         gameState.monstersKilledInZone++;
 
-        // Sistema de Drop de Itens
+        // Salvar progresso da zona
+        gameState.zoneProgress[gameState.currentZone] = gameState.monstersKilledInZone;
+
+        // Sistema de Drop de Itens (Veneno)
         // Apenas inimigos comuns (não bosses) nas arenas 10-15 com 2% de chance
         const isInDropZone = gameState.currentZone >= 10 && gameState.currentZone <= 15;
         const dropChance = 0.02; // 2%
@@ -597,14 +986,132 @@ function monterDeath() {
             }
         }
 
+        // ========================================
+        // SISTEMA DE DROP - PERGAMINHO RASGADO DE CLONE (SKILL 2 NARUTO)
+        // ========================================
+        // Apenas inimigos normais nas fases 20-40 com 8% de chance
+        const mission2 = gameState.missions.naruto_skill2;
+        if (mission2 && mission2.purchased && !mission2.completed) {
+            const isInScrollDropZone = gameState.currentZone >= 20 && gameState.currentZone <= 40;
+            const scrollDropChance = 0.08; // 8%
+
+            if (isInScrollDropZone && Math.random() < scrollDropChance) {
+                // Incrementar progresso da missão
+                mission2.progress++;
+                console.log(`🌀 Pergaminho Rasgado de Clone coletado! Progresso: ${mission2.progress}/${mission2.target}`);
+
+                // Mostrar notificação visual
+                const droppedItem = {
+                    icon: '🌀',
+                    name: 'Pergaminho Rasgado de Clone',
+                    description: 'Um pergaminho antigo com técnicas de clones',
+                    count: 1,
+                    isImage: false
+                };
+                showItemDropNotification(droppedItem);
+
+                // Verificar se completou a missão
+                if (mission2.progress >= mission2.target) {
+                    mission2.progress = mission2.target;
+                    mission2.completed = true;
+                    console.log('🎉 Missão Tajuu Kage Bunshin completada!');
+
+                    // Desbloquear a habilidade automaticamente (comprar o upgrade)
+                    const upgradeId = 'h1_u2'; // ID do upgrade Tajuu Kage Bunshin
+                    if (!gameState.upgrades.includes(upgradeId)) {
+                        gameState.upgrades.push(upgradeId);
+                        console.log(`✅ Habilidade ${upgradeId} desbloqueada automaticamente!`);
+                    }
+
+                    // Mostrar modal de conclusão
+                    showMissionCompleteModal(
+                        'Tajuu Kage Bunshin',
+                        '🌀',
+                        'Você completou a missão e desbloqueou a habilidade Tajuu Kage Bunshin! A habilidade já está disponível para uso.'
+                    );
+
+                    renderHeroesList();
+                    saveGame();
+                }
+
+                // Atualizar painel de missões se estiver visível
+                renderActiveMissions();
+            }
+        }
+
+        // ========================================
+        // SISTEMA DE DROP - NÚCLEO DE CHAKRA ESPIRAL (SKILL 3 NARUTO - RASENGAN)
+        // ========================================
+        // Apenas inimigos normais nas fases 50-80 com 6% de chance
+        const mission3 = gameState.missions.naruto_skill3;
+        if (mission3 && mission3.purchased && !mission3.completed) {
+            const isInCoreDropZone = gameState.currentZone >= 50 && gameState.currentZone <= 80;
+            const coreDropChance = 0.06; // 6%
+
+            if (isInCoreDropZone && Math.random() < coreDropChance) {
+                // Incrementar progresso da missão
+                mission3.progress++;
+                console.log(`⚡ Núcleo de Chakra Espiral coletado! Progresso: ${mission3.progress}/${mission3.target}`);
+
+                // Mostrar notificação visual
+                const droppedItem = {
+                    icon: '⚡',
+                    name: 'Núcleo de Chakra Espiral',
+                    description: 'Um núcleo pulsante de chakra em rotação',
+                    count: 1,
+                    isImage: false
+                };
+                showItemDropNotification(droppedItem);
+
+                // Verificar se completou a missão
+                if (mission3.progress >= mission3.target) {
+                    mission3.progress = mission3.target;
+                    mission3.completed = true;
+                    console.log('🎉 Missão Rasengan completada!');
+
+                    // Desbloquear a habilidade automaticamente (comprar o upgrade)
+                    const upgradeId = 'h1_u3'; // ID do upgrade Rasengan
+                    if (!gameState.upgrades.includes(upgradeId)) {
+                        gameState.upgrades.push(upgradeId);
+                        console.log(`✅ Habilidade ${upgradeId} desbloqueada automaticamente!`);
+                    }
+
+                    // Mostrar modal de conclusão
+                    showMissionCompleteModal(
+                        'Rasengan',
+                        '⚡',
+                        'Você completou a missão e desbloqueou o Rasengan! A habilidade já está disponível para uso.'
+                    );
+
+                    renderHeroesList();
+                    saveGame();
+                }
+
+                // Atualizar painel de missões se estiver visível
+                renderActiveMissions();
+            }
+        }
+
+        // Sistema de Drop de Diamantes (1% de chance para qualquer inimigo)
+        if (Math.random() < 0.01) {
+            const diamondsAmount = Math.floor(Math.random() * 3) + 1; // 1 a 3 diamantes
+            gameState.diamonds += diamondsAmount;
+            console.log(`💎 ${diamondsAmount} diamante(s) coletado(s)! Total: ${gameState.diamonds}`);
+
+            // Criar animação de diamantes caindo
+            createDiamondAnimation(diamondsAmount);
+            updateUI();
+        }
+
         // Desbloqueia próxima zona se matar o necessário na zona MAXIMA atual
         if (gameState.monstersKilledInZone >= zoneData.monstersPerZone) {
+            // Limitar a 10 para não passar
+            gameState.monstersKilledInZone = zoneData.monstersPerZone;
+            gameState.zoneProgress[gameState.currentZone] = gameState.monstersKilledInZone;
+
             if (gameState.currentZone === gameState.statistics.maxZone) {
                 gameState.statistics.maxZone++;
                 renderArenas();
-                gameState.monstersKilledInZone = 0;
-            } else {
-                gameState.monstersKilledInZone = 0;
             }
         }
     }
@@ -674,12 +1181,34 @@ function resetBossHealth() {
 // Loop Principal
 function startGameLoop() {
     setInterval(() => {
-        if (gameState.totalDps > 0) {
-            const dpsTick = gameState.totalDps / TICKS_PER_SECOND;
-            if (dpsTick > 0 && gameState.currentMonster.hp > 0) {
-                damageMonster(dpsTick, false);
+        const now = Date.now();
+        const deltaTime = now - lastUpdateTime;
+        lastUpdateTime = now;
+
+        // Se passou mais de 200ms desde a última atualização, processar tempo offline
+        // (navegador throttle quando aba está inativa)
+        if (deltaTime > 200 && gameState.totalDps > 0) {
+            // Calcular quantos ticks aconteceram durante o tempo offline
+            const offlineTicks = Math.floor(deltaTime / (1000 / TICKS_PER_SECOND));
+            const ticksToProcess = Math.min(offlineTicks, 600); // Limitar a 60 segundos de progresso offline
+
+            // Processar cada tick offline
+            for (let i = 0; i < ticksToProcess; i++) {
+                const dpsTick = gameState.totalDps / TICKS_PER_SECOND;
+                if (dpsTick > 0 && gameState.currentMonster.hp > 0) {
+                    damageMonster(dpsTick, false);
+                }
+            }
+        } else {
+            // Processamento normal
+            if (gameState.totalDps > 0) {
+                const dpsTick = gameState.totalDps / TICKS_PER_SECOND;
+                if (dpsTick > 0 && gameState.currentMonster.hp > 0) {
+                    damageMonster(dpsTick, false);
+                }
             }
         }
+
         checkBuyButtons();
     }, 1000 / TICKS_PER_SECOND);
 }
@@ -748,12 +1277,24 @@ function setupEventListeners() {
 
     // Configurar eventos da mochila
     setupBackpackEventListeners();
+
+    // Configurar eventos de missões
+    setupMissionEventListeners();
+
+    // Configurar eventos do modal de conclusão de missão
+    setupMissionCompleteEventListeners();
+
+    // Configurar eventos do painel admin
+    setupAdminEventListeners();
 }
 
 // UI Helpers
 function updateUI() {
     const goldEl = document.getElementById('player-gold');
     if (goldEl) goldEl.textContent = formatNumber(Math.floor(gameState.gold));
+
+    const diamondsEl = document.getElementById('player-diamonds');
+    if (diamondsEl) diamondsEl.textContent = formatNumber(gameState.diamonds);
 
     const dpsEl = document.getElementById('total-dps');
     if (dpsEl) dpsEl.textContent = formatNumber(Math.floor(gameState.totalDps));
@@ -827,8 +1368,8 @@ function createGoldCoins(amount) {
     const container = document.getElementById('damage-numbers-container');
     if (!container) return;
 
-    // Criar entre 3 e 8 moedas dependendo da quantidade de ouro
-    const numCoins = Math.min(Math.max(3, Math.floor(amount / 10)), 8);
+    // Criar entre 1 e 3 moedas dependendo da quantidade de ouro
+    const numCoins = Math.min(Math.max(1, Math.floor(amount / 30)), 3);
 
     for (let i = 0; i < numCoins; i++) {
         const coin = document.createElement('div');
@@ -849,6 +1390,35 @@ function createGoldCoins(amount) {
 
         // Remover após a animação (mais curto agora)
         setTimeout(() => coin.remove(), 800 + (i * 80));
+    }
+}
+
+function createDiamondAnimation(amount) {
+    const container = document.getElementById('damage-numbers-container');
+    if (!container) return;
+
+    // Criar diamantes baseado na quantidade dropada
+    const numDiamonds = Math.min(amount, 5);
+
+    for (let i = 0; i < numDiamonds; i++) {
+        const diamond = document.createElement('div');
+        diamond.className = 'diamond-drop';
+        diamond.textContent = '💎';
+
+        // Posição inicial aleatória ao redor do meio do monstro
+        const x = 45 + (Math.random() * 10 - 5);
+        const y = 50 + (Math.random() * 15 - 7.5);
+
+        diamond.style.left = `${x}%`;
+        diamond.style.top = `${y}%`;
+
+        // Delay para efeito cascata
+        diamond.style.animationDelay = `${i * 0.1}s`;
+
+        container.appendChild(diamond);
+
+        // Remover após a animação
+        setTimeout(() => diamond.remove(), 1000 + (i * 100));
     }
 }
 
@@ -879,7 +1449,46 @@ function showItemDropNotification(item) {
     }, 3000);
 }
 
+// Função para desbloquear o Rasengan do Naruto
+function unlockNarutoRasengan() {
+    console.log('🌀 Desbloqueando Rasengan!');
+
+    // Adicionar a skill aos upgrades
+    if (!gameState.upgrades.includes('h1_u3')) {
+        gameState.upgrades.push('h1_u3');
+
+        // Recalcular DPS com a nova skill
+        recalculateTotalDps();
+        updateUI();
+        renderHeroesList();
+
+        // Mostrar notificação especial
+        const notification = document.createElement('div');
+        notification.className = 'item-drop-notification rasengan-unlock';
+        notification.innerHTML = `
+            <div style="font-size: 3em;">🌀</div>
+            <div class="drop-content">
+                <div class="drop-text">SKILL DESBLOQUEADA!</div>
+                <div class="item-name">Rasengan</div>
+                <div style="font-size: 0.9em; margin-top: 5px;">DPS de Todos +10%</div>
+            </div>
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 5000);
+
+        console.log('✅ Rasengan desbloqueado com sucesso!');
+    }
+}
+
 function formatNumber(num) {
+    // Números maiores que 1 trilhão usam notação científica
+    if (num >= 1e15) {
+        const exponent = Math.floor(Math.log10(num));
+        const mantissa = num / Math.pow(10, exponent);
+        return mantissa.toFixed(2) + '^' + exponent;
+    }
+
+    // Formatação padrão: k, M, B, T
     if (num >= 1000000000000) return (num / 1000000000000).toFixed(2) + 'T';
     if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
     if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
@@ -895,7 +1504,9 @@ function saveGame() {
         savedHeroes: gameState.heroes.map(h => ({ id: h.id, level: h.level })),
         upgrades: gameState.upgrades,
         statistics: gameState.statistics,
-        inventory: gameState.inventory
+        inventory: gameState.inventory,
+        diamonds: gameState.diamonds, // Salvar diamantes
+        missions: gameState.missions // Salvar missões
     };
     localStorage.setItem('narutoClickerSave', JSON.stringify(saveObj));
 }
@@ -911,6 +1522,8 @@ function loadGame() {
             gameState.upgrades = saved.upgrades || [];
             gameState.statistics = { ...gameState.statistics, ...saved.statistics };
             gameState.inventory = saved.inventory || [];
+            gameState.diamonds = saved.diamonds || 0; // Carregar diamantes
+            gameState.missions = saved.missions || gameState.missions; // Carregar missões
             if (!gameState.statistics.maxZone) gameState.statistics.maxZone = 1;
         } catch (e) {
             console.error("Erro save", e);
@@ -919,10 +1532,9 @@ function loadGame() {
 }
 
 function resetGame() {
-    if (confirm("TEM CERTEZA? Isso apagará todo o seu progresso para sempre!")) {
-        localStorage.removeItem('narutoClickerSave');
-        location.reload();
-    }
+    // Resetar sem confirmação
+    localStorage.removeItem('narutoClickerSave');
+    location.reload();
 }
 
 // ===== SISTEMA DE MOCHILA =====
@@ -1084,3 +1696,965 @@ function setupAdminPanel() {
 
 window.onload = initGame;
 
+
+// ===== SISTEMA DE MISSÕES =====
+function openMissionModal(missionId) {
+    const modal = document.getElementById('mission-modal');
+    const content = document.getElementById('mission-content');
+    const titleText = document.getElementById('mission-title-text');
+    const purchaseBtn = document.getElementById('purchase-mission-btn');
+
+    if (missionId === 'naruto_skill1') {
+        const mission = gameState.missions.naruto_skill1;
+
+        titleText.textContent = '';
+
+        // Se a missão estiver completada, mostrar apenas os buffs
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Kage Bunshin no Jutsu</h3>
+                    <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Dano de Clique do Naruto x2</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Vento)</h4>
+                        <p><strong>Clique recebe +15% adicional</strong></p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            // Missão não completada - mostrar requisitos e objetivos
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Kage Bunshin no Jutsu</h3>
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Dano de Clique do Naruto x2</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Vento)</h4>
+                        <p><strong>Clique recebe +15% adicional</strong></p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Objetivo da Missão</h4>
+                        <p>Derrotar <strong>150 inimigos normais</strong><br>
+                        entre as <strong>fases 1-10</strong><br>
+                        usando <strong>apenas clique</strong> (sem DPS)</p>
+                        ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                            <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                            <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                ${mission.progress}/${mission.target}
+                            </span>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Configurar botão de compra
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
+    } else if (missionId === 'naruto_skill2') {
+        const mission = gameState.missions.naruto_skill2;
+
+        titleText.textContent = '';
+
+        // Se a missão estiver completada, mostrar apenas os buffs
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Tajuu Kage Bunshin</h3>
+                    <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Dano de Clique x2</strong><br>
+                        (stack com Skill 1 → total x4)<br><br>
+                        Naruto ganha:<br>
+                        <strong>+20% DPS próprio adicional</strong><br><br>
+                        Cada 10 níveis do Naruto:<br>
+                        <strong>+1% DPS global</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Vento)</h4>
+                        <p><strong>Clique recebe +15% adicional</strong></p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            // Missão não completada - mostrar requisitos e objetivos
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Tajuu Kage Bunshin</h3>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Dano de Clique x2 novamente</strong><br>
+                        (stack com Skill 1 → total x4)<br><br>
+                        Naruto ganha:<br>
+                        <strong>+20% DPS próprio adicional</strong><br><br>
+                        Cada 10 níveis do Naruto:<br>
+                        <strong>+1% DPS global</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Vento)</h4>
+                        <p><strong>Clique recebe +15% adicional</strong></p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Objetivo da Missão</h4>
+                        <p>Dropar item de missão:<br>
+                        <strong>🌀 Pergaminho Rasgado de Clone</strong><br><br>
+                        Dropa apenas em <strong>fases 20–40</strong><br>
+                        Chance: <strong>8% por inimigo morto</strong><br>
+                        Precisa de: <strong>30 Pergaminhos</strong></p>
+                        ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                            <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                            <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                ${mission.progress}/${mission.target}
+                            </span>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Configurar botão de compra
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
+    } else if (missionId === 'naruto_skill3') {
+        // Verificação de segurança: se a missão não existe no save, criar
+        if (!gameState.missions.naruto_skill3) {
+            gameState.missions.naruto_skill3 = {
+                id: "naruto_skill3",
+                purchased: false,
+                completed: false,
+                progress: 0,
+                target: 80,
+                cost: 40
+            };
+        }
+
+        const mission = gameState.missions.naruto_skill3;
+
+        titleText.textContent = '';
+
+        // Se a missão estiver completada, mostrar apenas os buffs
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Rasengan</h3>
+                    <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Buff Global + Dano Elemental</strong><br><br>
+                        DPS de todos os heróis: <strong>+15%</strong><br>
+                        Bosses recebem: <strong>+35% dano de Vento</strong><br>
+                        Naruto ganha: <strong>+10% dano adicional contra inimigos de Raio</strong></p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            // Missão não completada - mostrar requisitos e objetivos
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Rasengan</h3>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Buff Global + Dano Elemental</strong><br><br>
+                        DPS de todos os heróis: <strong>+15%</strong><br>
+                        Bosses recebem: <strong>+35% dano de Vento</strong><br>
+                        Naruto ganha: <strong>+10% dano adicional contra inimigos de Raio</strong></p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Objetivo da Missão</h4>
+                        <p>Coletar item de missão:<br>
+                        <strong>🌀 Núcleo de Chakra Espiral</strong><br><br>
+                        Dropa apenas entre as <strong>fases 50–80</strong><br>
+                        Chance: <strong>6% por inimigo</strong><br>
+                        Precisa de: <strong>80 Núcleos</strong></p>
+                        ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                            <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                            <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                ${mission.progress}/${mission.target}
+                            </span>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Configurar botão de compra
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
+    } else if (missionId === 'naruto_skill4') {
+        // Verificação de segurança
+        if (!gameState.missions.naruto_skill4) {
+            gameState.missions.naruto_skill4 = {
+                id: "naruto_skill4",
+                purchased: false,
+                completed: false,
+                cost: 120,
+                part1: { completed: false, progress: 0, target: 12 },
+                part2: { completed: false, bossDefeated: false },
+                part3: { completed: false, goldOffered: false }
+            };
+        }
+
+        const mission = gameState.missions.naruto_skill4;
+        titleText.textContent = '';
+
+        // Se a missão estiver completada, mostrar apenas os buffs
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3 style="color: #ff4444;">🔴 Chakra da Kyūbi ( 1 Cauda )</h3>
+                    <p style="text-align: center; color: #ff4444; font-style: italic;">Missão Lendária — Ultimate Skill Genin</p>
+                    <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Ultimate Skill — Burst de Emergência (Genin)</strong><br><br>
+                        <strong>Durante Boss Fight:</strong><br>
+                        Clique do Naruto: <strong>+150% dano (x2.5)</strong><br>
+                        DPS do Naruto: <strong>+75%</strong><br>
+                        DPS global do time: <strong>+15%</strong><br>
+                        Bosses recebem: <strong>+40% dano de Vento</strong><br><br>
+                        <strong>🔥 Quando o boss está abaixo de 30% HP:</strong><br>
+                        Naruto entra em "surto"<br>
+                        Clique do Naruto recebe mais <strong>+50% dano</strong></p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            // Missão não completada - mostrar requisitos e objetivos
+            // Determinar quantas partes mostrar
+            let showPart2 = mission.part1.completed;
+            let showPart3 = mission.part1.completed && mission.part2.completed;
+
+            // Estilos para partes completadas
+            const completedStyle = 'text-decoration: line-through; color: #00ff00;';
+            const completedClass = mission.part1.completed ? completedStyle : '';
+            const completed2Class = mission.part2.completed ? completedStyle : '';
+            const completed3Class = mission.part3.completed ? completedStyle : '';
+
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3 style="color: #ff4444;">🔴 Chakra da Kyūbi ( 1 Cauda )</h3>
+                    <p style="text-align: center; color: #ff4444; font-style: italic;">Missão Lendária — Ultimate Skill Genin</p>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p><strong>Ultimate Skill — Burst de Emergência (Genin)</strong><br><br>
+                        <strong>Durante Boss Fight:</strong><br>
+                        Clique do Naruto: <strong>+150% dano (x2.5)</strong><br>
+                        DPS do Naruto: <strong>+75%</strong><br>
+                        DPS global do time: <strong>+15%</strong><br>
+                        Bosses recebem: <strong>+40% dano de Vento</strong><br><br>
+                        <strong>🔥 Quando o boss está abaixo de 30% HP:</strong><br>
+                        Naruto entra em "surto"<br>
+                        Clique do Naruto recebe mais <strong>+50% dano</strong></p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Missão: "O Chakra Vermelho Começa a Vazar…"</h4>
+                        
+                        <!-- Parte 1 -->
+                        <div style="margin-bottom: 15px;">
+                            <p style="${completedClass}"><strong>Parte 1/3 — Selos Quebrados</strong></p>
+                            ${mission.purchased && !mission.part1.completed ? `
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor((mission.part1.progress / mission.part1.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000; font-size: 0.9em;">
+                                        ${mission.part1.progress}/${mission.part1.target}
+                                    </span>
+                                </div>
+                            ` : ''}
+                            <p style="${completedClass}; font-size: 0.9em;">
+                            ${mission.purchased ? `<strong>${mission.part1.progress}/${mission.part1.target}</strong><br>` : ''}
+                            Dropar: <strong>🩸 Fragmento de Selo Enfraquecido</strong><br>
+                            Dropa entre as fases 100–130<br>
+                            Precisa de: <strong>100 Fragmentos</strong></p>
+                        </div>
+                        
+                        ${showPart2 ? `
+                        <!-- Parte 2 -->
+                        <div style="margin-bottom: 15px;">
+                            <p style="${completed2Class}"><strong>Parte 2/3 — O Chakra Vermelho Responde ao Ódio</strong></p>
+                            ${mission.purchased && !mission.part2.completed ? `
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor((mission.part2.progress / mission.part2.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000; font-size: 0.9em;">
+                                        ${mission.part2.progress}/${mission.part2.target}
+                                    </span>
+                                </div>
+                            ` : ''}
+                            <p style="${completed2Class}; font-size: 0.9em;">
+                            ${mission.purchased && showPart2 ? `<strong>${mission.part2.progress}/${mission.part2.target}</strong><br>` : ''}
+                            Dropar: <strong>🩸 Resíduo de Chakra da Kyūbi</strong><br>
+                            Dropa de Bosses das fases 130–160<br>
+                            Precisa de: <strong>8 Resíduos</strong></p>
+                        </div>
+                        ` : ''}
+                        
+                        ${showPart3 ? `
+                        <!-- Parte 3 -->
+                        <div style="margin-bottom: 15px;">
+                            <p style="${completed3Class}"><strong>Parte 3/3 — Controle Instável</strong></p>
+                            <p style="${completed3Class}; font-size: 0.9em;">
+                            Entregar: <strong>💰 15.000.000 Gold</strong><br>
+                            ${!mission.part3.completed && mission.purchased ? `
+                                <button onclick="offerGoldForKyuubi()" 
+                                        style="background: linear-gradient(135deg, #ff4444, #cc0000); 
+                                               color: white; border: 2px solid #990000; 
+                                               padding: 8px 16px; border-radius: 5px; 
+                                               cursor: pointer; font-weight: bold; margin-top: 5px;"
+                                        ${gameState.gold < 15000000 ? 'disabled' : ''}>
+                                    ${gameState.gold >= 15000000 ? '✅ Entregar Gold' : '❌ Gold Insuficiente'}
+                                </button>
+                            ` : ''}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Configurar botão de compra
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
+    }
+
+    modal.classList.add('active');
+}
+
+function purchaseMission(missionId) {
+    if (missionId === 'naruto_skill1') {
+        const mission = gameState.missions.naruto_skill1;
+
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+
+            console.log('✅ Missão comprada! Comece a derrotar inimigos nas fases 1-10 usando apenas clique!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
+
+
+        }
+    } else if (missionId === 'naruto_skill2') {
+        const mission = gameState.missions.naruto_skill2;
+
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+
+            console.log('✅ Missão Skill 2 comprada! Comece a coletar Pergaminhos Rasgados de Clone nas fases 20-40!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
+
+
+        }
+    } else if (missionId === 'naruto_skill3') {
+        // Verificação de segurança: se a missão não existe no save, criar
+        if (!gameState.missions.naruto_skill3) {
+            gameState.missions.naruto_skill3 = {
+                id: "naruto_skill3",
+                purchased: false,
+                completed: false,
+                progress: 0,
+                target: 80,
+                cost: 40
+            };
+        }
+
+        const mission = gameState.missions.naruto_skill3;
+
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+
+            console.log('✅ Missão Rasengan comprada! Comece a coletar Núcleos de Chakra Espiral nas fases 80-120!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
+
+
+        }
+    } else if (missionId === 'naruto_skill4') {
+        // Verificação de segurança
+        if (!gameState.missions.naruto_skill4) {
+            gameState.missions.naruto_skill4 = {
+                id: "naruto_skill4",
+                purchased: false,
+                completed: false,
+                cost: 120,
+                part1: { completed: false, progress: 0, target: 12 },
+                part2: { completed: false, bossDefeated: false },
+                part3: { completed: false, goldOffered: false }
+            };
+        }
+
+        const mission = gameState.missions.naruto_skill4;
+
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+
+            console.log('✅ Missão Lendária Chakra da Kyūbi comprada! Comece a coletar Fragmentos de Selo Enfraquecido nas fases 100-130!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
+
+
+        }
+    }
+}
+
+// Função para entregar gold na Parte 3 da Skill 4
+function offerGoldForKyuubi() {
+    const mission = gameState.missions.naruto_skill4;
+
+    if (!mission || !mission.purchased) {
+        console.log('❌ Erro: Missão não está ativa!');
+        return;
+    }
+
+    if (!mission.part1.completed || !mission.part2.completed) {
+        console.log('❌ Você precisa completar as Partes 1 e 2 primeiro!');
+        return;
+    }
+
+    if (gameState.gold < 15000000) {
+        console.log('❌ Gold insuficiente! Você precisa de 15.000.000 Gold.');
+        return;
+    }
+
+    if (mission.part3.completed) {
+        console.log('✅ Você já completou esta parte!');
+        return;
+    }
+
+    // Entregar gold automaticamente
+    gameState.gold -= 15000000;
+    mission.part3.completed = true;
+    mission.part3.goldOffered = true;
+
+    // Verificar se todas as partes estão completas
+    if (mission.part1.completed && mission.part2.completed && mission.part3.completed) {
+        mission.completed = true;
+
+        // Desbloquear a habilidade automaticamente
+        const upgradeId = 'h1_u4';
+        if (!gameState.upgrades.includes(upgradeId)) {
+            gameState.upgrades.push(upgradeId);
+            console.log(`✅ Habilidade ${upgradeId} desbloqueada automaticamente!`);
+        }
+
+        // Mostrar modal de conclusão
+        showMissionCompleteModal(
+            'Chakra da Kyūbi (1 Cauda)',
+            '🔴',
+            'Você completou a missão lendária e desbloqueou o Chakra da Kyūbi! A habilidade definitiva já está disponível para uso.'
+        );
+    }
+
+    updateUI();
+    saveGame();
+    renderHeroesList();
+    openMissionModal('naruto_skill4'); // Reabrir modal para atualizar
+}
+
+function closeMissionModal() {
+    const modal = document.getElementById('mission-modal');
+    modal.classList.remove('active');
+}
+
+function setupMissionEventListeners() {
+    const closeBtn = document.getElementById('close-mission');
+    const modal = document.getElementById('mission-modal');
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeMissionModal);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeMissionModal();
+            }
+        });
+    }
+}
+
+// ===== MODAL DE CONCLUSÃO DE MISSÃO =====
+function showMissionCompleteModal(skillName, skillIcon, description) {
+    const modal = document.getElementById('mission-complete-modal');
+    const skillNameEl = document.getElementById('mission-complete-skill-name');
+    const skillIconEl = document.getElementById('mission-complete-skill-icon');
+    const descriptionEl = document.getElementById('mission-complete-description');
+
+    if (skillNameEl) skillNameEl.textContent = skillName;
+    if (skillIconEl) skillIconEl.textContent = skillIcon;
+    if (descriptionEl) descriptionEl.textContent = description;
+
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function closeMissionCompleteModal() {
+    const modal = document.getElementById('mission-complete-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function setupMissionCompleteEventListeners() {
+    const closeBtn = document.getElementById('close-mission-complete');
+    const modal = document.getElementById('mission-complete-modal');
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeMissionCompleteModal);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeMissionCompleteModal();
+            }
+        });
+    }
+}
+
+// ========================================
+// ADMIN PANEL - Event Listeners
+// ========================================
+
+function setupAdminEventListeners() {
+    // Abrir/Fechar modal
+    const adminTrigger = document.getElementById('admin-trigger');
+    const adminModal = document.getElementById('admin-modal');
+    const closeAdmin = document.getElementById('close-admin');
+
+    if (adminTrigger) {
+        adminTrigger.addEventListener('click', () => {
+            adminModal.style.display = 'flex';
+        });
+    }
+
+    if (closeAdmin) {
+        closeAdmin.addEventListener('click', () => {
+            adminModal.style.display = 'none';
+        });
+    }
+
+    if (adminModal) {
+        adminModal.addEventListener('click', (e) => {
+            if (e.target === adminModal) {
+                adminModal.style.display = 'none';
+            }
+        });
+    }
+
+    // Adicionar Gold
+    const addGoldBtn = document.getElementById('add-gold-btn');
+    const goldInput = document.getElementById('gold-input');
+    if (addGoldBtn && goldInput) {
+        addGoldBtn.addEventListener('click', () => {
+            const amount = parseInt(goldInput.value) || 0;
+            if (amount > 0) {
+                addGold(amount);
+                goldInput.value = '';
+            }
+        });
+    }
+
+    // Adicionar Diamantes
+    const addDiamondsBtn = document.getElementById('add-diamonds-btn');
+    const diamondsInput = document.getElementById('diamonds-input');
+    if (addDiamondsBtn && diamondsInput) {
+        addDiamondsBtn.addEventListener('click', () => {
+            const amount = parseInt(diamondsInput.value) || 0;
+            if (amount > 0) {
+                addDiamonds(amount);
+                diamondsInput.value = '';
+            }
+        });
+    }
+
+    // Definir DPS
+    const setDpsBtn = document.getElementById('set-dps-btn');
+    const dpsInput = document.getElementById('dps-input');
+    if (setDpsBtn && dpsInput) {
+        setDpsBtn.addEventListener('click', () => {
+            const amount = parseInt(dpsInput.value) || 0;
+            if (amount >= 0) {
+                setDPS(amount);
+                dpsInput.value = '';
+            }
+        });
+    }
+
+    // Definir Dano de Clique
+    const setClickDamageBtn = document.getElementById('set-click-damage-btn');
+    const clickDamageInput = document.getElementById('click-damage-input');
+    if (setClickDamageBtn && clickDamageInput) {
+        setClickDamageBtn.addEventListener('click', () => {
+            const amount = parseInt(clickDamageInput.value) || 0;
+            if (amount >= 0) {
+                setClickDamage(amount);
+                clickDamageInput.value = '';
+            }
+        });
+    }
+
+    // Desbloquear Skills Individuais
+    const unlockSkill1 = document.getElementById('unlock-skill-1');
+    const unlockSkill2 = document.getElementById('unlock-skill-2');
+    const unlockSkill3 = document.getElementById('unlock-skill-3');
+    const unlockSkill4 = document.getElementById('unlock-skill-4');
+
+    if (unlockSkill1) unlockSkill1.addEventListener('click', () => unlockSkill('h1_u1'));
+    if (unlockSkill2) unlockSkill2.addEventListener('click', () => unlockSkill('h1_u2'));
+    if (unlockSkill3) unlockSkill3.addEventListener('click', () => unlockSkill('h1_u3'));
+    if (unlockSkill4) unlockSkill4.addEventListener('click', () => unlockSkill('h1_u4'));
+
+    // Desbloquear Todas do Naruto
+    const unlockAllNaruto = document.getElementById('unlock-all-naruto');
+    if (unlockAllNaruto) {
+        unlockAllNaruto.addEventListener('click', () => unlockAllSkills('h1'));
+    }
+
+    // Bloquear Skills Individuais
+    const lockSkill1 = document.getElementById('lock-skill-1');
+    const lockSkill2 = document.getElementById('lock-skill-2');
+    const lockSkill3 = document.getElementById('lock-skill-3');
+    const lockSkill4 = document.getElementById('lock-skill-4');
+
+    if (lockSkill1) lockSkill1.addEventListener('click', () => lockSkill('h1_u1', 'naruto_skill1'));
+    if (lockSkill2) lockSkill2.addEventListener('click', () => lockSkill('h1_u2', 'naruto_skill2'));
+    if (lockSkill3) lockSkill3.addEventListener('click', () => lockSkill('h1_u3', 'naruto_skill3'));
+    if (lockSkill4) lockSkill4.addEventListener('click', () => lockSkill('h1_u4', 'naruto_skill4'));
+
+    // Bloquear Todas do Naruto
+    const lockAllNaruto = document.getElementById('lock-all-naruto');
+    if (lockAllNaruto) {
+        lockAllNaruto.addEventListener('click', () => lockAllSkills('h1'));
+    }
+
+    // Ir para Zona
+    const goToZoneBtn = document.getElementById('go-to-zone-btn');
+    const zoneInput = document.getElementById('zone-input');
+    if (goToZoneBtn && zoneInput) {
+        goToZoneBtn.addEventListener('click', () => {
+            const zone = parseInt(zoneInput.value) || 0;
+            if (zone >= 1) {
+                goToZone(zone);
+                zoneInput.value = '';
+            }
+        });
+    }
+}
+
+// ========================================
+// MODO ADMIN - Funções de Desenvolvimento
+// ========================================
+
+// Adicionar Gold
+window.addGold = function (amount) {
+    gameState.gold += amount;
+    updateUI();
+    saveGame();
+    console.log(`💰 ${formatNumber(amount)} gold adicionado! Total: ${formatNumber(gameState.gold)}`);
+};
+
+// Adicionar Diamantes
+window.addDiamonds = function (amount) {
+    gameState.diamonds += amount;
+    updateUI();
+    saveGame();
+    console.log(`💎 ${amount} diamantes adicionados! Total: ${gameState.diamonds}`);
+};
+
+// Definir DPS customizado
+window.setDPS = function (amount) {
+    gameState.totalDps = amount;
+    updateUI();
+    saveGame();
+    console.log(`⚡ DPS definido para: ${formatNumber(amount)}`);
+};
+
+// Definir Dano de Clique customizado
+window.setClickDamage = function (amount) {
+    gameState.clickDamage = amount;
+    updateUI();
+    saveGame();
+    console.log(`👆 Dano de clique definido para: ${formatNumber(amount)}`);
+};
+
+// Desbloquear habilidade específica
+window.unlockSkill = function (skillId) {
+    if (!gameState.upgrades.includes(skillId)) {
+        gameState.upgrades.push(skillId);
+        renderHeroesList();
+        updateUI();
+        saveGame();
+        console.log(`✅ Habilidade ${skillId} desbloqueada!`);
+    } else {
+        console.log(`⚠️ Habilidade ${skillId} já está desbloqueada!`);
+    }
+};
+
+// Desbloquear todas as habilidades de um herói
+window.unlockAllSkills = function (heroId) {
+    const upgrades = heroUpgrades[heroId];
+    if (upgrades) {
+        upgrades.forEach(upg => {
+            if (!gameState.upgrades.includes(upg.id)) {
+                gameState.upgrades.push(upg.id);
+            }
+        });
+        renderHeroesList();
+        updateUI();
+        saveGame();
+        console.log(`✅ Todas as habilidades do herói ${heroId} desbloqueadas!`);
+    } else {
+        console.log(`⚠️ Herói ${heroId} não encontrado!`);
+    }
+};
+
+// Bloquear habilidade específica e resetar missão
+window.lockSkill = function (skillId, missionId) {
+    // Remover habilidade dos upgrades
+    const index = gameState.upgrades.indexOf(skillId);
+    if (index > -1) {
+        gameState.upgrades.splice(index, 1);
+    }
+
+    // Resetar missão correspondente
+    if (missionId && gameState.missions[missionId]) {
+        gameState.missions[missionId].purchased = false;
+        gameState.missions[missionId].completed = false;
+        gameState.missions[missionId].progress = 0;
+    }
+
+    renderHeroesList();
+    renderActiveMissions();
+    updateUI();
+    saveGame();
+    console.log(`🔒 Habilidade ${skillId} bloqueada e missão ${missionId} resetada!`);
+};
+
+// Bloquear todas as habilidades de um herói
+window.lockAllSkills = function (heroId) {
+    const upgrades = heroUpgrades[heroId];
+    if (upgrades) {
+        upgrades.forEach(upg => {
+            const index = gameState.upgrades.indexOf(upg.id);
+            if (index > -1) {
+                gameState.upgrades.splice(index, 1);
+            }
+        });
+
+        // Resetar todas as missões do Naruto
+        if (heroId === 'h1') {
+            const missions = ['naruto_skill1', 'naruto_skill2', 'naruto_skill3', 'naruto_skill4'];
+            missions.forEach(missionId => {
+                if (gameState.missions[missionId]) {
+                    gameState.missions[missionId].purchased = false;
+                    gameState.missions[missionId].completed = false;
+                    gameState.missions[missionId].progress = 0;
+                }
+            });
+        }
+
+        renderHeroesList();
+        renderActiveMissions();
+        updateUI();
+        saveGame();
+        console.log(`🔒 Todas as habilidades do herói ${heroId} bloqueadas e missões resetadas!`);
+    } else {
+        console.log(`⚠️ Herói ${heroId} não encontrado!`);
+    }
+};
+
+// Ir para uma zona específica
+window.goToZone = function (zoneNumber) {
+    if (zoneNumber >= 1) {
+        gameState.currentZone = zoneNumber;
+        if (zoneNumber > gameState.statistics.maxZone) {
+            gameState.statistics.maxZone = zoneNumber;
+        }
+        gameState.monstersKilledInZone = gameState.zoneProgress[zoneNumber] || 0;
+        spawnMonster();
+        renderArenas();
+        updateUI();
+        saveGame();
+        console.log(`🗺️ Você foi para a zona ${zoneNumber}!`);
+    } else {
+        console.log(`⚠️ Número de zona inválido!`);
+    }
+};
+
+// Completar missão específica
+window.completeMission = function (missionId) {
+    const mission = gameState.missions[missionId];
+    if (mission) {
+        mission.purchased = true;
+        mission.completed = true;
+        mission.progress = mission.target;
+
+        // Desbloquear habilidade correspondente
+        const skillMap = {
+            'naruto_skill1': 'h1_u1',
+            'naruto_skill2': 'h1_u2',
+            'naruto_skill3': 'h1_u3',
+            'naruto_skill4': 'h1_u4'
+        };
+
+        const skillId = skillMap[missionId];
+        if (skillId && !gameState.upgrades.includes(skillId)) {
+            gameState.upgrades.push(skillId);
+        }
+
+        renderHeroesList();
+        renderActiveMissions();
+        updateUI();
+        saveGame();
+        console.log(`✅ Missão ${missionId} completada e habilidade desbloqueada!`);
+    } else {
+        console.log(`⚠️ Missão ${missionId} não encontrada!`);
+    }
+};
+
+// Mostrar comandos disponíveis
+window.adminHelp = function () {
+    console.log(`
+🎮 ========== COMANDOS ADMIN ========== 🎮
+
+💰 addGold(amount)           - Adicionar gold
+💎 addDiamonds(amount)        - Adicionar diamantes
+⚡ setDPS(amount)             - Definir DPS total
+👆 setClickDamage(amount)     - Definir dano de clique
+✅ unlockSkill(skillId)       - Desbloquear habilidade específica
+   Exemplos: 'h1_u1', 'h1_u2', 'h1_u3', 'h1_u4'
+🌟 unlockAllSkills(heroId)    - Desbloquear todas as habilidades de um herói
+   Exemplos: 'h1' (Naruto), 'h2' (Sasuke), etc.
+🗺️  goToZone(number)          - Ir para zona específica
+🎯 completeMission(missionId) - Completar missão
+   Exemplos: 'naruto_skill1', 'naruto_skill2', etc.
+
+📖 adminHelp()                - Mostrar esta ajuda
+
+========================================
+    `);
+};
+
+console.log('🔧 Modo Admin ativado! Digite adminHelp() para ver os comandos disponíveis.');
