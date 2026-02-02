@@ -1470,7 +1470,7 @@ function unlockNarutoRasengan() {
             <div class="drop-content">
                 <div class="drop-text">SKILL DESBLOQUEADA!</div>
                 <div class="item-name">Rasengan</div>
-                <div style="font-size: 0.9em; margin-top: 5px;">DPS de Todos +10%</div>
+                <div style="font-size: 0.9em; margin-top: 5px;">DPS de Todos +15%</div>
             </div>
         `;
         document.body.appendChild(notification);

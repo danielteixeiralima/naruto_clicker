@@ -73,7 +73,7 @@ function openHeroDetailsModal(heroId) {
     // Montar HTML
     let html = `
         <div class="hero-details-header">
-            <img src="${hero.fullBodyImg}" class="hero-details-portrait" alt="${hero.name}">
+            <img src="${hero.img}" class="hero-details-portrait" alt="${hero.name}">
             <div class="hero-details-name">
                 <h3>${hero.name}</h3>
                 <p>Nível ${hero.level}</p>
