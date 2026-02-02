@@ -60,16 +60,16 @@ body::before {
 
 .game-container {
     display: flex;
-    /* Compensar zoom de 0.85: 100 / 0.85 = 117.65 */
+    /* Tamanho base - será ajustado pelo anti_zoom.js */
     width: 117.65vw;
     height: 117.65vh;
-    max-width: 117.65vw;
-    max-height: 117.65vh;
+    max-width: none;
+    max-height: none;
     padding: 20px;
     box-sizing: border-box;
     margin: 0;
     position: relative;
-    /* Zoom out de 85% - mantém layout espalhado pela tela */
+    /* Zoom base de 85% - anti_zoom.js compensa mudanças do navegador */
     zoom: 0.85;
 }
 
