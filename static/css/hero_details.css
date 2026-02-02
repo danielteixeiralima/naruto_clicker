@@ -35,6 +35,15 @@
     object-fit: cover;
     object-position: center 30%;
     transform: scale(0.75);
+
+    /* Alta qualidade de renderização */
+    image-rendering: auto;
+    image-rendering: -webkit-optimize-contrast;
+    -ms-interpolation-mode: bicubic;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-origin: center;
+    will-change: transform;
 }
 
 .hero-details-name {

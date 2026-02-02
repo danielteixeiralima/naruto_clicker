@@ -9,31 +9,68 @@
     --dps-color: #ff4500;
 }
 
+/* Forçar renderização de alta qualidade para todas as imagens */
+img {
+    image-rendering: auto;
+    image-rendering: -webkit-optimize-contrast;
+    -ms-interpolation-mode: bicubic;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: transform;
+}
+
+/* Forçar aceleração de hardware para melhor qualidade */
+canvas,
+img,
+video {
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+}
+
 body {
     margin: 0;
     padding: 0;
     font-family: 'Roboto', sans-serif;
+    background: #1a1a1a;
+    color: var(--text-color);
+    overflow: hidden;
+    user-select: none;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Background fixo do jogo - não afetado por zoom */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-image: url('../img/battle_bg.png');
     background-size: cover;
     background-position: center;
-    color: var(--text-color);
-    height: 100vh;
-    overflow: hidden;
-    user-select: none;
-    position: relative;
+    z-index: -1;
+    pointer-events: none;
+    zoom: 1;
 }
 
 
 
 .game-container {
     display: flex;
-    height: 100vh;
-    width: 100%;
-    max-width: 100%;
+    /* Compensar zoom de 0.85: 100 / 0.85 = 117.65 */
+    width: 117.65vw;
+    height: 117.65vh;
+    max-width: 117.65vw;
+    max-height: 117.65vh;
     padding: 20px;
     box-sizing: border-box;
     margin: 0;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+    position: relative;
+    /* Zoom out de 85% - mantém layout espalhado pela tela */
+    zoom: 0.85;
 }
 
 .panel {

@@ -1,0 +1,61 @@
+/* Notificação de Missão */
+.mission-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    background: linear-gradient(135deg, rgba(139, 0, 0, 0.95), rgba(220, 20, 60, 0.95));
+    border: 3px solid #ff0000;
+    border-radius: 10px;
+    padding: 20px;
+    min-width: 300px;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3);
+    animation: slideInRight 0.5s ease-out, glow 2s ease-in-out infinite;
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+}
+
+.mission-notification-content {
+    color: #fff;
+    text-align: center;
+}
+
+.mission-notification-title {
+    font-family: 'Bangers', cursive;
+    font-size: 1.5em;
+    color: #ffd700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    margin-bottom: 10px;
+}
+
+.mission-notification-message {
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.1em;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes glow {
+
+    0%,
+    100% {
+        box-shadow: 0 10px 30px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 10px 40px rgba(255, 0, 0, 0.7), 0 0 30px rgba(255, 0, 0, 0.5);
+    }
+}

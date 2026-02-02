@@ -3,13 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Naruto Clicker Heroes</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=10">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tabs_missions.css') }}?v=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mission_complete.css') }}?v=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_panel.css') }}?v=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/hero_details.css') }}?v=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mission_notification.css') }}?v=1">
     <link
         href="https://fonts.googleapis.com/css2?family=Bangers&family=Shojumaru&family=Roboto:wght@400;700&display=swap"
         rel="stylesheet">
@@ -296,6 +297,7 @@
     <!-- Botão Admin (Discreto) -->
     <div id="admin-trigger" title="Admin Panel">⚙️</div>
 
+    <script src="{{ url_for('static', filename='js/anti_zoom.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/game_data_v3.js') }}?v=5"></script>
     <script src="{{ url_for('static', filename='js/missions_panel.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/hero_details_modal.js') }}?v=1"></script>

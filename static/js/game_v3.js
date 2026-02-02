@@ -1984,7 +1984,7 @@ function openMissionModal(missionId) {
             content.innerHTML = `
                 <div class="mission-details">
                     <h3 style="color: #ff4444;">🔴 Chakra da Kyūbi ( 1 Cauda )</h3>
-                    <p style="text-align: center; color: #ff4444; font-style: italic;">Missão Lendária — Ultimate Skill Genin</p>
+                    <p style="text-align: center; color: #ff4444; font-style: italic;">Missão Lendária — Ultimate Skill</p>
                     <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
                         <strong>✅ Habilidade Desbloqueada!</strong>
                     </div>
@@ -2019,7 +2019,7 @@ function openMissionModal(missionId) {
             content.innerHTML = `
                 <div class="mission-details">
                     <h3 style="color: #ff4444;">🔴 Chakra da Kyūbi ( 1 Cauda )</h3>
-                    <p style="text-align: center; color: #ff4444; font-style: italic;">Missão Lendária — Ultimate Skill Genin</p>
+                    <p style="text-align: center; color: #ff4444; font-style: italic;">Missão Lendária — Ultimate Skill</p>
                     
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
@@ -2051,7 +2051,7 @@ function openMissionModal(missionId) {
                             <p style="${completedClass}; font-size: 0.9em;">
                             ${mission.purchased ? `<strong>${mission.part1.progress}/${mission.part1.target}</strong><br>` : ''}
                             Dropar: <strong>🩸 Fragmento de Selo Enfraquecido</strong><br>
-                            Dropa entre as fases 100–130<br>
+                            Taxa de drop: <strong style="color: #ffd700;">10%</strong> por inimigo derrotado<br>
                             Precisa de: <strong>100 Fragmentos</strong></p>
                         </div>
                         
@@ -2070,7 +2070,7 @@ function openMissionModal(missionId) {
                             <p style="${completed2Class}; font-size: 0.9em;">
                             ${mission.purchased && showPart2 ? `<strong>${mission.part2.progress}/${mission.part2.target}</strong><br>` : ''}
                             Dropar: <strong>🩸 Resíduo de Chakra da Kyūbi</strong><br>
-                            Dropa de Bosses das fases 130–160<br>
+                            Taxa de drop: <strong style="color: #ffd700;">30%</strong> por boss derrotado (zonas 5, 10, 15...)<br>
                             Precisa de: <strong>8 Resíduos</strong></p>
                         </div>
                         ` : ''}

@@ -166,6 +166,36 @@ function monterDeath() {
 
     logMessage(`Monstro derrotado! +${formatNumber(goldDrop)} Ryo`);
 
+    // === DROPS DA MISSÃO CHAKRA DA KYUUBI (SKILL 4) ===
+    const mission = gameState.missions?.naruto_skill4;
+    if (mission && mission.purchased && !mission.completed) {
+
+        // PARTE 1: Fragmentos de Selo Enfraquecido (10% de chance)
+        if (!mission.part1.completed && Math.random() < 0.10) {
+            mission.part1.progress++;
+            logMessage(`🔴 +1 Fragmento de Selo Enfraquecido (${mission.part1.progress}/${mission.part1.target})`);
+
+            if (mission.part1.progress >= mission.part1.target) {
+                mission.part1.completed = true;
+                logMessage(`✅ Parte 1 Completa: Selos Quebrados!`);
+                showMissionNotification('Chakra da Kyuubi', 'Parte 1 Completa: Selos Quebrados!');
+            }
+        }
+
+        // PARTE 2: Resíduos de Chakra da Kyūbi (apenas em bosses - zona múltipla de 5)
+        const isBoss = (gameState.currentZone % 5 === 0);
+        if (!mission.part2.completed && mission.part1.completed && isBoss && Math.random() < 0.30) {
+            mission.part2.progress++;
+            logMessage(`🔴 +1 Resíduo de Chakra da Kyūbi (${mission.part2.progress}/${mission.part2.target})`);
+
+            if (mission.part2.progress >= mission.part2.target) {
+                mission.part2.completed = true;
+                logMessage(`✅ Parte 2 Completa: O Chakra Vermelho Responde ao Ódio!`);
+                showMissionNotification('Chakra da Kyuubi', 'Parte 2 Completa: Chakra Vermelho Liberado!');
+            }
+        }
+    }
+
     // Progressão de Zona
     if (gameState.monstersKilledInZone >= zoneData.monstersPerZone) {
         gameState.currentZone++;
@@ -270,6 +300,26 @@ function animateMonsterShake() {
     visual.classList.remove('shake');
     void visual.offsetWidth; // Trigger reflow
     visual.classList.add('shake');
+}
+
+function showMissionNotification(missionName, message) {
+    // Criar notificação visual
+    const notification = document.createElement('div');
+    notification.className = 'mission-notification';
+    notification.innerHTML = `
+        <div class="mission-notification-content">
+            <div class="mission-notification-title">🔴 ${missionName}</div>
+            <div class="mission-notification-message">${message}</div>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Remover após 4 segundos
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 500);
+    }, 4000);
 }
 
 function logMessage(msg) {
