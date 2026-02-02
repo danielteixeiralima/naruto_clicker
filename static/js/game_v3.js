@@ -454,7 +454,7 @@ function renderHeroesList() {
                                 purchased: false,
                                 completed: false,
                                 cost: 120,
-                                part1: { completed: false, progress: 0, target: 12 },
+                                part1: { completed: false, progress: 0, target: 100 },
                                 part2: { completed: false, bossDefeated: false },
                                 part3: { completed: false, goldOffered: false }
                             };
@@ -1970,7 +1970,7 @@ function openMissionModal(missionId) {
                 purchased: false,
                 completed: false,
                 cost: 120,
-                part1: { completed: false, progress: 0, target: 12 },
+                part1: { completed: false, progress: 0, target: 100 },
                 part2: { completed: false, bossDefeated: false },
                 part3: { completed: false, goldOffered: false }
             };
@@ -2193,7 +2193,7 @@ function purchaseMission(missionId) {
                 purchased: false,
                 completed: false,
                 cost: 120,
-                part1: { completed: false, progress: 0, target: 12 },
+                part1: { completed: false, progress: 0, target: 100 },
                 part2: { completed: false, bossDefeated: false },
                 part3: { completed: false, goldOffered: false }
             };
