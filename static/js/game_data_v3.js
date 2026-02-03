@@ -50,10 +50,46 @@ const specificUpgrades = {
         { id: "h1_u4", reqLevel: 80, type: "MISSION", value: 0, costMultiplier: 1000, icon: "./static/img/skills/skill_1_4.png", name: "Chakra da Kyuubi", desc: "Missão: Liberar o Chakra da Kyūbi" }
     ],
     2: [ // Sasuke
-        { id: "h2_u1", reqLevel: 20, type: "SELF_DPS_MULT", value: 2, costMultiplier: 10, icon: "./static/img/skills/skill_3_1.png", name: "Sharingan", desc: "DPS do Sasuke x2" },
-        { id: "h2_u2", reqLevel: 40, type: "SELF_DPS_MULT", value: 2, costMultiplier: 50, icon: "./static/img/skills/skill_3_2.png", name: "Chidori", desc: "DPS do Sasuke x2" },
-        { id: "h2_u3", reqLevel: 60, type: "GLOBAL_DPS_MULT", value: 1.1, costMultiplier: 200, icon: "./static/img/skills/skill_3_3.png", name: "Katon: Goukakyuu no Jutsu", desc: "DPS de Todos +10%" },
-        { id: "h2_u4", reqLevel: 80, type: "CRIT_CHANCE", value: 0.01, costMultiplier: 1000, icon: "./static/img/skills/skill_3_4.png", name: "Shurikenjutsu Uchiha", desc: "Chance Crítica +1%" }
+        {
+            id: "h2_u1",
+            reqLevel: 20,
+            type: "SELF_DPS_MULT",
+            value: 2,
+            costMultiplier: 10,
+            icon: "./static/img/skills/skill_3_1.png",
+            name: "Sharingan (1 Tomoe)",
+            desc: "DPS do Sasuke x2 | +10% chance de crítico contra inimigos de Terra (Sharingan lê movimentos e explora fraquezas)"
+        },
+        {
+            id: "h2_u2",
+            reqLevel: 40,
+            type: "SELF_DPS_MULT",
+            value: 2,
+            costMultiplier: 50,
+            icon: "./static/img/skills/skill_3_2.png",
+            name: "Chidori Incompleto",
+            desc: "DPS do Sasuke x2 (stack → total x4) | Bosses recebem +25% dano de Raio | +5% crit chance durante boss fight"
+        },
+        {
+            id: "h2_u3",
+            reqLevel: 60,
+            type: "GLOBAL_DPS_MULT",
+            value: 1.15,
+            costMultiplier: 200,
+            icon: "./static/img/skills/skill_3_3.png",
+            name: "Katon: Goukakyuu no Jutsu",
+            desc: "DPS de todos os ninjas +15% | Inimigos sofrem +35% dano de fogo | Sasuke: +20% DPS contra inimigos de Vento"
+        },
+        {
+            id: "h2_u4",
+            reqLevel: 80,
+            type: "MISSION",
+            value: 0,
+            costMultiplier: 1000,
+            icon: "./static/img/skills/skill_3_4.png",
+            name: "Marca da Maldição (Estágio 1)",
+            desc: "DPS do Sasuke +120% (x2.2) | Clique global +20% | Bosses recebem +50% dano | +2% DPS por boss diferente derrotado (stack infinito) | Inimigos de Água reduzem bônus pela metade"
+        }
     ],
     3: [ // Sakura
         { id: "h3_u1", reqLevel: 20, type: "SELF_DPS_MULT", value: 2, costMultiplier: 10, icon: "./static/img/skills/skill_2_1.png", name: "Controle Preciso de Chakra", desc: "DPS da Sakura x2" },

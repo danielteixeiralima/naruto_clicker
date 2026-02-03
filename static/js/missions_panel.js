@@ -117,22 +117,21 @@ function renderActiveMissions() {
             html += `
                 <div class="mission-item">
                     <div class="mission-item-header">
-                        <span class="mission-item-icon">${item.icon}</span>
                         <div>
                             <div class="mission-item-title">${item.name}</div>
                             <div class="mission-item-hero">${item.hero}</div>
                         </div>
                     </div>
-                    <div class="mission-progress-bar">
-                        <div class="mission-progress-fill" style="width: ${partProgressPercent}%"></div>
-                        <div class="mission-progress-text">${currentProgress}/${currentTarget}</div>
-                    </div>
-                    <div class="mission-item-status">
-                        ${!mission.part1.completed ? `Parte 1/3` :
+                <div class="mission-progress-bar">
+                    <div class="mission-progress-fill" style="width: ${partProgressPercent}%"></div>
+                    <div class="mission-progress-text">${currentProgress}/${currentTarget}</div>
+                </div>
+                <div class="mission-item-status">
+                    ${!mission.part1.completed ? `Parte 1/3` :
                     !mission.part2.completed ? `Parte 2/3` :
                         !mission.part3.completed ? `Parte 3/3` : 'Completa!'}
-                    </div>
                 </div>
+            </div>
             `;
         } else {
             // Para missões simples (skills 1, 2, 3)
@@ -141,20 +140,19 @@ function renderActiveMissions() {
             html += `
                 <div class="mission-item">
                     <div class="mission-item-header">
-                        <span class="mission-item-icon">${item.icon}</span>
                         <div>
                             <div class="mission-item-title">${item.name}</div>
                             <div class="mission-item-hero">${item.hero}</div>
                         </div>
                     </div>
-                    <div class="mission-progress-bar">
-                        <div class="mission-progress-fill" style="width: ${progressPercent}%"></div>
-                        <div class="mission-progress-text">${mission.progress}/${mission.target}</div>
-                    </div>
-                    <div class="mission-item-status">
-                        ${progressPercent < 100 ? 'Em andamento...' : 'Pronta para completar!'}
-                    </div>
+                <div class="mission-progress-bar">
+                    <div class="mission-progress-fill" style="width: ${progressPercent}%"></div>
+                    <div class="mission-progress-text">${mission.progress}/${mission.target}</div>
                 </div>
+                <div class="mission-item-status">
+                    ${progressPercent < 100 ? `${mission.progress}/${mission.target}` : 'Pronta para completar!'}
+                </div>
+            </div>
             `;
         }
     }

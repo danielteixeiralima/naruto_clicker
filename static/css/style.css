@@ -584,6 +584,33 @@ body::before {
     font-size: 3em;
 }
 
+/* Dano Elemental - Cores por Elemento */
+.damage-vento {
+    color: #00ff00;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #00ff00;
+}
+
+.damage-trovao,
+.damage-raio {
+    color: #ffff00;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #ffff00;
+}
+
+.damage-fogo {
+    color: #ff4500;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #ff4500;
+}
+
+.damage-agua {
+    color: #00bfff;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #00bfff;
+}
+
+.damage-terra {
+    color: #8b4513;
+    text-shadow: 2px 2px 0 #000, 0 0 10px #ffa500;
+}
+
 @keyframes floatUp {
     0% {
         opacity: 1;
@@ -2531,4 +2558,15 @@ hr {
     50% {
         box-shadow: 0 0 25px rgba(255, 200, 0, 0.7), inset 0 0 30px rgba(255, 220, 0, 0.4);
     }
+}
+
+/* Hero Stats Overlay - Mostrar apenas no hover do botão UPGRADE */
+.hero-stats-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.card-right-col:has(.hero-buy-btn:hover)~.hero-stats-overlay {
+    opacity: 1;
 }

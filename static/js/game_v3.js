@@ -160,8 +160,31 @@ function recalculateTotalDps() {
         }
     });
 
+    // Aplicar buff de DPS global da Skill 2 do Naruto (+1% a cada 10 níveis)
+    if (gameState.missions.naruto_skill2?.completed) {
+        const naruto = gameState.heroes.find(h => h.id === 1);
+        if (naruto) {
+            const dpsBonus = Math.floor(naruto.level / 10) * 0.01; // +1% por cada 10 níveis
+            globalMulti *= (1 + dpsBonus);
+        }
+    }
+
     gameState.totalDps = dps * globalMulti;
-    gameState.clickDamage = clickCtx * globalMulti;
+
+    // Aplicar buffs de clique das skills
+    let clickMultiplier = 1;
+
+    // Naruto Skill 1: Kage Bunshin (Dano de Clique x2)
+    if (gameState.missions.naruto_skill1?.completed) {
+        clickMultiplier *= 2;
+    }
+
+    // Naruto Skill 2: Tajuu Kage Bunshin (Dano de Clique x2)
+    if (gameState.missions.naruto_skill2?.completed) {
+        clickMultiplier *= 2;
+    }
+
+    gameState.clickDamage = clickCtx * globalMulti * clickMultiplier;
 }
 
 // Renderização da Lista de Heróis (Split Layout: Left Name/Img, Right Info)
@@ -238,14 +261,14 @@ function renderHeroesList() {
         // 1. Nível
         let levelHTML = isLocked ? `<div class="hero-level-display">???</div>` : `<div class="hero-level-display" id="hero-level-text-${hero.id}">Nível ${hero.level}</div>`;
 
+
         // 2. Status (Dano/DPS) agora vai para o OVERLAY
         let statsHTML = "";
         if (isLocked) {
             statsHTML = `<div class="hero-stats-text">???</div>`;
         } else {
-            // Calcular o incremento de DPS do próximo nível
-            const nextLevelDps = hero.baseDps * Math.pow(1.07, hero.level + 1);
-            const dpsIncrement = Math.abs(nextLevelDps - dpsVal);
+            // Cada nível adiciona exatamente o baseDps do herói
+            const dpsIncrement = hero.baseDps;
 
             if (hero.id === 1) {
                 // Calcular dano bruto com buffs das skills
@@ -271,8 +294,8 @@ function renderHeroesList() {
                     elementalDamage = clickDamageWithBuffs * (0.15 * elementalCount);
                 }
 
-                const nextLevelClickDamage = hero.baseDps * Math.pow(1.07, hero.level + 1);
-                const clickIncrement = Math.abs(nextLevelClickDamage - dpsVal);
+                // Naruto: cada nível dá +1 de dano de clique (baseDps)
+                const clickIncrement = hero.baseDps;
 
                 statsHTML = `
                     <div class="stat-line">
@@ -282,7 +305,7 @@ function renderHeroesList() {
                     </div>
                     ${elementalDamage > 0 ? `<div class="stat-line elemental-wind">
                         <strong>💨 Dano Elemental (Vento):</strong> 
-                        <span style="color: #00ff00;">+${formatNumber(elementalDamage)}</span>
+                        <span style="color: #00ff00;">${formatNumber(elementalDamage)}</span>
                     </div>` : ''}
                 `;
             } else {
@@ -495,6 +518,182 @@ function renderHeroesList() {
                             clickHandler = `openMissionModal('naruto_skill4')`;
                             tooltipExtra = `<br><br><span style="color: #ff4444;">✅ Missão Lendária Completada!</span>`;
                         }
+                    } else if (upg.id === 'h2_u1') {
+                        // Sasuke Skill 1: Sharingan (1 Tomoe)
+                        const mission = gameState.missions.sasuke_skill1 || {
+                            id: "sasuke_skill1",
+                            purchased: false,
+                            completed: false,
+                            progress: 0,
+                            target: 25,
+                            cost: 8
+                        };
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill1')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(200,0,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão: "Olhos do Clã Amaldiçoado"</strong><br>
+                                <span style="color: #00d4ff;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Objetivo:</strong><br>
+                                Coletar 25 Fragmentos de Tomoe Desperto<br>
+                                nas fases 15-35 (10% de chance)<br><br>
+                                <strong>💥 Efeito:</strong><br>
+                                DPS do Sasuke x2<br>
+                                +10% chance de crítico contra inimigos de Terra
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill1')`;
+                            const progressPercent = Math.floor((mission.progress / mission.target) * 100);
+                            tooltipExtra = `<br><br><div style="background: rgba(150,0,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão em Andamento</strong><br>
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #ff0000, #aa0000); width: ${progressPercent}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                        ${mission.progress}/${mission.target}
+                                    </span>
+                                </div>
+                                <small>Colete Fragmentos de Tomoe nas fases 15-35!</small>
+                            </div>`;
+                        } else if (mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill1')`;
+                            tooltipExtra = `<br><br><span style="color: #00ff00;">✅ Missão Completada!</span>`;
+                        }
+                    } else if (upg.id === 'h2_u2') {
+                        // Sasuke Skill 2: Chidori Incompleto
+                        const mission = gameState.missions.sasuke_skill2 || {
+                            id: "sasuke_skill2",
+                            purchased: false,
+                            completed: false,
+                            progress: 0,
+                            target: 12,
+                            cost: 20
+                        };
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill2')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(0,100,200,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão: "Treino do Raio Assassino"</strong><br>
+                                <span style="color: #00d4ff;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Objetivo:</strong><br>
+                                Coletar 12 Agulhas de Chakra Elétrico<br>
+                                apenas em bosses das fases 40-80 (18% de chance)<br><br>
+                                <strong>💥 Efeito:</strong><br>
+                                DPS do Sasuke x2 (stack → total x4)<br>
+                                Bosses recebem +25% dano de Raio<br>
+                                +5% crit chance durante boss fight
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill2')`;
+                            const progressPercent = Math.floor((mission.progress / mission.target) * 100);
+                            tooltipExtra = `<br><br><div style="background: rgba(0,150,200,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão em Andamento</strong><br>
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #00ffff, #0088ff); width: ${progressPercent}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                        ${mission.progress}/${mission.target}
+                                    </span>
+                                </div>
+                                <small>Derrote bosses nas fases 40-80 para coletar Agulhas!</small>
+                            </div>`;
+                        } else if (mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill2')`;
+                            tooltipExtra = `<br><br><span style="color: #00ff00;">✅ Missão Completada!</span>`;
+                        }
+                    } else if (upg.id === 'h2_u3') {
+                        // Sasuke Skill 3: Katon: Goukakyuu no Jutsu
+                        const mission = gameState.missions.sasuke_skill3 || {
+                            id: "sasuke_skill3",
+                            purchased: false,
+                            completed: false,
+                            progress: 0,
+                            target: 90,
+                            cost: 50
+                        };
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill3')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(200,50,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão: "Prova do Estilo Fogo Uchiha"</strong><br>
+                                <span style="color: #00d4ff;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Objetivo:</strong><br>
+                                Coletar 90 Cinzas do Grande Dragão de Fogo<br>
+                                nas fases 90-140 (6% de chance)<br><br>
+                                <strong>💥 Efeito:</strong><br>
+                                DPS de todos os ninjas +15%<br>
+                                Inimigos sofrem +35% dano de fogo<br>
+                                Sasuke: +20% DPS contra inimigos de Vento
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill3')`;
+                            const progressPercent = Math.floor((mission.progress / mission.target) * 100);
+                            tooltipExtra = `<br><br><div style="background: rgba(200,100,0,0.2); padding: 8px; border-radius: 5px; margin-top: 5px;">
+                                <strong>🎯 Missão em Andamento</strong><br>
+                                <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                    <div style="background: linear-gradient(90deg, #ff4500, #ff8800); width: ${progressPercent}%; height: 100%; border-radius: 5px;"></div>
+                                    <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                        ${mission.progress}/${mission.target}
+                                    </span>
+                                </div>
+                                <small>Colete Cinzas do Dragão de Fogo nas fases 90-140!</small>
+                            </div>`;
+                        } else if (mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill3')`;
+                            tooltipExtra = `<br><br><span style="color: #00ff00;">✅ Missão Completada!</span>`;
+                        }
+                    } else if (upg.id === 'h2_u4') {
+                        // Sasuke Skill 4: Marca da Maldição (Estágio 1) - Missão Lendária
+                        const mission = gameState.missions.sasuke_skill4 || {
+                            id: "sasuke_skill4",
+                            purchased: false,
+                            completed: false,
+                            progress: 0,
+                            parts: [
+                                { id: 1, name: "Fragmentos da Maldição", completed: false, progress: 0, target: 15 },
+                                { id: 2, name: "Dominar o Poder Proibido", completed: false },
+                                { id: 3, name: "Oferta Final", completed: false, goldCost: 30000000 }
+                            ],
+                            cost: 140
+                        };
+                        isUnlocked = mission.completed;
+
+                        if (!mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill4')`;
+                            tooltipExtra = `<br><br><div style="background: rgba(50,0,50,0.3); padding: 8px; border-radius: 5px; margin-top: 5px; border: 2px solid #8b00ff;">
+                                <strong style="color: #ff00ff;">🎯 Missão Lendária: "O Poder que Orochimaru Deixou..."</strong><br>
+                                <span style="color: #00d4ff;">💎 Custo: ${mission.cost} Diamantes</span><br><br>
+                                <strong>📋 Objetivo (3 Partes):</strong><br>
+                                <span style="color: #aaa;">Parte 1:</span> Coletar 15 Selos Corrompidos (bosses 160-220, 20%)<br>
+                                <span style="color: #aaa;">Parte 2:</span> Derrotar boss da fase 225 (30s)<br>
+                                <span style="color: #aaa;">Parte 3:</span> Entregar 30.000.000 Gold<br><br>
+                                <strong>💥 Efeito Ultimate:</strong><br>
+                                DPS do Sasuke +120% (x2.2)<br>
+                                Clique global +20%<br>
+                                Bosses recebem +50% dano<br>
+                                <span style="color: #ff00ff;">+2% DPS por boss diferente derrotado (stack infinito)</span>
+                            </div>`;
+                        } else if (mission.purchased && !mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill4')`;
+                            const part1 = mission.parts[0];
+                            const part2 = mission.parts[1];
+                            const part3 = mission.parts[2];
+                            const part1Percent = Math.floor((part1.progress / part1.target) * 100);
+
+                            tooltipExtra = `<br><br><div style="background: rgba(50,0,50,0.3); padding: 8px; border-radius: 5px; margin-top: 5px; border: 2px solid #8b00ff;">
+                                <strong style="color: #ff00ff;">🎯 Missão Lendária em Andamento</strong><br><br>
+                                <strong>Parte 1:</strong> ${part1.completed ? '✅' : `${part1.progress}/${part1.target}`}<br>
+                                ${!part1.completed ? `<div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 15px; margin: 3px 0;">
+                                    <div style="background: linear-gradient(90deg, #8b00ff, #ff00ff); width: ${part1Percent}%; height: 100%; border-radius: 5px;"></div>
+                                </div>` : ''}
+                                <strong>Parte 2:</strong> ${part2.completed ? '✅' : '❌ Pendente'}<br>
+                                <strong>Parte 3:</strong> ${part3.completed ? '✅' : '❌ Pendente'}<br>
+                            </div>`;
+                        } else if (mission.completed) {
+                            clickHandler = `openMissionModal('sasuke_skill4')`;
+                            tooltipExtra = `<br><br><span style="color: #ff00ff;">✅ Missão Lendária Completada!</span>`;
+                        }
                     } else {
                         isUnlocked = hero.level >= upg.reqLevel;
                     }
@@ -507,6 +706,10 @@ function renderHeroesList() {
                     if (upg.id === 'h1_u2' && gameState.missions.naruto_skill2?.completed) missionCompleted = true;
                     if (upg.id === 'h1_u3' && gameState.missions.naruto_skill3?.completed) missionCompleted = true;
                     if (upg.id === 'h1_u4' && gameState.missions.naruto_skill4?.completed) missionCompleted = true;
+                    if (upg.id === 'h2_u1' && gameState.missions.sasuke_skill1?.completed) missionCompleted = true;
+                    if (upg.id === 'h2_u2' && gameState.missions.sasuke_skill2?.completed) missionCompleted = true;
+                    if (upg.id === 'h2_u3' && gameState.missions.sasuke_skill3?.completed) missionCompleted = true;
+                    if (upg.id === 'h2_u4' && gameState.missions.sasuke_skill4?.completed) missionCompleted = true;
 
                     // Verificação para missões compradas (em andamento)
                     let missionPurchased = false;
@@ -514,6 +717,10 @@ function renderHeroesList() {
                     if (upg.id === 'h1_u2' && gameState.missions.naruto_skill2?.purchased && !gameState.missions.naruto_skill2?.completed) missionPurchased = true;
                     if (upg.id === 'h1_u3' && gameState.missions.naruto_skill3?.purchased && !gameState.missions.naruto_skill3?.completed) missionPurchased = true;
                     if (upg.id === 'h1_u4' && gameState.missions.naruto_skill4?.purchased && !gameState.missions.naruto_skill4?.completed) missionPurchased = true;
+                    if (upg.id === 'h2_u1' && gameState.missions.sasuke_skill1?.purchased && !gameState.missions.sasuke_skill1?.completed) missionPurchased = true;
+                    if (upg.id === 'h2_u2' && gameState.missions.sasuke_skill2?.purchased && !gameState.missions.sasuke_skill2?.completed) missionPurchased = true;
+                    if (upg.id === 'h2_u3' && gameState.missions.sasuke_skill3?.purchased && !gameState.missions.sasuke_skill3?.completed) missionPurchased = true;
+                    if (upg.id === 'h2_u4' && gameState.missions.sasuke_skill4?.purchased && !gameState.missions.sasuke_skill4?.completed) missionPurchased = true;
 
                     if (isBought || missionCompleted) upgClass += ' bought';
                     else if (missionPurchased) upgClass += ' available in-progress';
@@ -544,6 +751,31 @@ function renderHeroesList() {
                         // Se for a skill 4 do Naruto e tiver diamantes suficientes, adicionar classe affordable
                         if (upg.id === 'h1_u4') {
                             const mission = gameState.missions.naruto_skill4;
+                            if (mission && !mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                        // Sasuke Skills - affordable checks
+                        if (upg.id === 'h2_u1') {
+                            const mission = gameState.missions.sasuke_skill1;
+                            if (mission && !mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                        if (upg.id === 'h2_u2') {
+                            const mission = gameState.missions.sasuke_skill2;
+                            if (mission && !mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                        if (upg.id === 'h2_u3') {
+                            const mission = gameState.missions.sasuke_skill3;
+                            if (mission && !mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
+                                upgClass += ' affordable';
+                            }
+                        }
+                        if (upg.id === 'h2_u4') {
+                            const mission = gameState.missions.sasuke_skill4;
                             if (mission && !mission.purchased && !mission.completed && gameState.diamonds >= mission.cost) {
                                 upgClass += ' affordable';
                             }
@@ -869,22 +1101,82 @@ function spawnMonster() {
     updateMonsterUI();
 }
 
-function damageMonster(amount, isClick = false) {
-    let finalDmg = amount;
+// Calcular dano elemental baseado nos buffs dos heróis
+function calculateElementalDamage() {
+    let elementalDmg = 0;
+    let elementType = null;
+    let windBonus = 0;
+
+    // Verificar buffs do Naruto (elemento Vento)
+    const naruto = gameState.heroes.find(h => h.id === 1);
+    if (naruto && naruto.level > 0) {
+        // Skill 1: Kage Bunshin (+15% dano de Vento)
+        if (gameState.missions.naruto_skill1?.completed) {
+            windBonus += 0.15;
+        }
+
+        // +10% adicional de dano contra inimigos de Raio (vantagem elemental)
+        if (gameState.currentMonster && gameState.currentMonster.element === 'Raio') {
+            windBonus += 0.10;
+        }
+
+        // Buffs de Vento contra bosses
+        const isBoss = gameState.currentZone % 5 === 0;
+        if (isBoss) {
+            // Skill 3: Rasengan (+35% dano de Vento contra bosses)
+            if (gameState.missions.naruto_skill3?.completed) {
+                windBonus += 0.35;
+            }
+
+            // Skill 4: Chakra da Kyuubi (+40% dano de Vento contra bosses)
+            if (gameState.missions.naruto_skill4?.completed) {
+                windBonus += 0.40;
+            }
+        }
+
+        // Calcular dano elemental de Vento (só se houver algum buff)
+        if (windBonus > 0) {
+            elementalDmg = gameState.clickDamage * windBonus;
+            elementType = 'Vento';
+        }
+    }
+
+    console.log('calculateElementalDamage - Resultado:', { damage: elementalDmg, type: elementType, windBonus: windBonus });
+    return { damage: elementalDmg, type: elementType };
+}
+
+function damageMonster(amount, isClick = false, elementalDamage = 0, elementType = null) {
+    // amount já é o dano base puro (gameState.clickDamage)
+    // elementalDamage é calculado separadamente
+    let finalBaseDmg = amount;
+    let finalElementalDmg = elementalDamage;
     let isCrit = false;
 
     if (isClick && gameState.critChance > 0) {
         if (Math.random() < gameState.critChance) {
-            finalDmg *= gameState.clickCritMultiplier;
+            finalBaseDmg *= gameState.clickCritMultiplier;
+            finalElementalDmg *= gameState.clickCritMultiplier;
             isCrit = true;
         }
     }
 
-    gameState.currentMonster.hp -= finalDmg;
+    // Aplicar dano total (base + elemental)
+    const totalDamage = finalBaseDmg + finalElementalDmg;
+    gameState.currentMonster.hp -= totalDamage;
     if (gameState.currentMonster.hp < 0) gameState.currentMonster.hp = 0;
 
     if (isClick) {
-        createDamageNumber(finalDmg, isCrit);
+        // Debug
+        console.log('Dano Base:', finalBaseDmg, 'Dano Elemental:', finalElementalDmg, 'Tipo:', elementType);
+
+        // Criar número de dano base (branco)
+        createDamageNumber(finalBaseDmg, isCrit, null);
+
+        // Criar número de dano elemental (colorido) se houver
+        if (finalElementalDmg > 0 && elementType) {
+            createDamageNumber(finalElementalDmg, isCrit, elementType);
+        }
+
         animateMonsterShake();
         animateMonsterHitScale(); // Nova animação de aumento
         gameState.statistics.totalClicks++;
@@ -1353,7 +1645,13 @@ function setupEventListeners() {
     if (clickTarget) {
         clickTarget.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            damageMonster(gameState.clickDamage, true);
+
+            // Calcular dano elemental
+            const elemental = calculateElementalDamage();
+
+            // Aplicar dano base + dano elemental
+            damageMonster(gameState.clickDamage, true, elemental.damage, elemental.type);
+
             const vis = clickTarget.querySelector('.monster-visual');
             if (vis) vis.style.transform = "scale(0.9)";
         });
@@ -1418,7 +1716,7 @@ function updateMonsterUI() {
     if (curHp) curHp.textContent = formatNumber(Math.ceil(gameState.currentMonster.hp));
 }
 
-function createDamageNumber(amount, isCrit) {
+function createDamageNumber(amount, isCrit, elementType = null) {
     const container = document.getElementById('damage-numbers-container');
     if (!container) return;
 
@@ -1427,10 +1725,21 @@ function createDamageNumber(amount, isCrit) {
     if (isCrit) {
         el.classList.add('damage-crit');
     }
+
+    // Aplicar classe de elemento se houver
+    if (elementType) {
+        el.classList.add(`damage-${elementType.toLowerCase()}`);
+    }
+
     el.textContent = formatNumber(Math.floor(amount));
 
-    const x = 50 + (Math.random() * 20 - 10);
-    const y = 50 + (Math.random() * 20 - 10);
+    // Posição aleatória com offset para dano elemental
+    const baseX = 50 + (Math.random() * 20 - 10);
+    const baseY = 50 + (Math.random() * 20 - 10);
+
+    // Se for dano elemental, deslocar um pouco para o lado
+    const x = elementType ? baseX + 15 : baseX;
+    const y = baseY;
 
     el.style.left = `${x}%`;
     el.style.top = `${y}%`;
@@ -1868,7 +2177,7 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p><strong>Dano de Clique do Naruto x2</strong></p>
+                        <p>- <strong>Dano de Clique x2</strong></p>
                     </div>
                     
                     <div class="mission-section bonus">
@@ -1885,7 +2194,7 @@ function openMissionModal(missionId) {
                     <h3>Kage Bunshin no Jutsu</h3>
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p><strong>Dano de Clique do Naruto x2</strong></p>
+                        <p>- <strong>Dano de Clique x2</strong></p>
                     </div>
                     
                     <div class="mission-section bonus">
@@ -1895,9 +2204,9 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section objective">
                         <h4>📋 Objetivo da Missão</h4>
-                        <p>Derrotar <strong>150 inimigos normais</strong><br>
-                        entre as <strong>fases 1-10</strong><br>
-                        usando <strong>apenas clique</strong> (sem DPS)</p>
+                        <p>- Derrotar <strong>150 inimigos normais</strong><br>
+                        - Entre as <strong>fases 1-10</strong><br>
+                        - Usando <strong>apenas clique</strong> (sem DPS)</p>
                         ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
                             <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
                             <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
@@ -1946,11 +2255,8 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p><strong>Dano de Clique x2</strong><br>
-                        (stack com Skill 1 → total x4)<br><br>
-                        Naruto ganha:<br>
-                        <strong>+20% DPS próprio adicional</strong><br><br>
-                        Cada 10 níveis do Naruto:<br>
+                        <p>- <strong>Dano de Clique x2</strong><br><br>
+                        - Cada 10 níveis do Naruto:<br>
                         <strong>+1% DPS global</strong></p>
                     </div>
                     
@@ -1969,11 +2275,8 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p><strong>Dano de Clique x2 novamente</strong><br>
-                        (stack com Skill 1 → total x4)<br><br>
-                        Naruto ganha:<br>
-                        <strong>+20% DPS próprio adicional</strong><br><br>
-                        Cada 10 níveis do Naruto:<br>
+                        <p>- <strong>Dano de Clique x2</strong><br><br>
+                        - Cada 10 níveis do Naruto:<br>
                         <strong>+1% DPS global</strong></p>
                     </div>
                     
@@ -1984,11 +2287,11 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section objective">
                         <h4>📋 Objetivo da Missão</h4>
-                        <p>Dropar item de missão:<br>
+                        <p>- Dropar item de missão:<br>
                         <strong>🌀 Pergaminho Rasgado de Clone</strong><br><br>
-                        Dropa apenas em <strong>fases 20–40</strong><br>
-                        Chance: <strong>8% por inimigo morto</strong><br>
-                        Precisa de: <strong>30 Pergaminhos</strong></p>
+                        - Dropa apenas em <strong>fases 20–40</strong><br>
+                        - Chance: <strong>8% por inimigo morto</strong><br>
+                        - Precisa de: <strong>30 Pergaminhos</strong></p>
                         ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
                             <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
                             <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
@@ -2049,10 +2352,10 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p><strong>Buff Global + Dano Elemental</strong><br><br>
-                        DPS de todos os heróis: <strong>+15%</strong><br>
-                        Bosses recebem: <strong>+35% dano de Vento</strong><br>
-                        Naruto ganha: <strong>+10% dano adicional contra inimigos de Raio</strong></p>
+                        <p>- <strong>Buff Global + Dano Elemental</strong><br><br>
+                        - DPS de todos os heróis: <strong>+15%</strong><br>
+                        - Bosses recebem: <strong>+35% dano de Vento</strong><br>
+                        - Naruto ganha: <strong>+10% dano adicional contra inimigos de Raio</strong></p>
                     </div>
                 </div>
             `;
@@ -2065,19 +2368,19 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p><strong>Buff Global + Dano Elemental</strong><br><br>
-                        DPS de todos os heróis: <strong>+15%</strong><br>
-                        Bosses recebem: <strong>+35% dano de Vento</strong><br>
-                        Naruto ganha: <strong>+10% dano adicional contra inimigos de Raio</strong></p>
+                        <p>- <strong>Buff Global + Dano Elemental</strong><br><br>
+                        - DPS de todos os heróis: <strong>+15%</strong><br>
+                        - Bosses recebem: <strong>+35% dano de Vento</strong><br>
+                        - Naruto ganha: <strong>+10% dano adicional contra inimigos de Raio</strong></p>
                     </div>
                     
                     <div class="mission-section objective">
                         <h4>📋 Objetivo da Missão</h4>
-                        <p>Coletar item de missão:<br>
+                        <p>- Coletar item de missão:<br>
                         <strong>🌀 Núcleo de Chakra Espiral</strong><br><br>
-                        Dropa apenas entre as <strong>fases 50–80</strong><br>
-                        Chance: <strong>6% por inimigo</strong><br>
-                        Precisa de: <strong>80 Núcleos</strong></p>
+                        - Dropa apenas entre as <strong>fases 50–80</strong><br>
+                        - Chance: <strong>6% por inimigo</strong><br>
+                        - Precisa de: <strong>80 Núcleos</strong></p>
                         ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
                             <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
                             <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
@@ -2288,6 +2591,393 @@ function openMissionModal(missionId) {
                 purchaseBtn.style.display = 'none';
             }
         }
+    } else if (missionId === 'sasuke_skill1') {
+        // Sasuke Skill 1: Sharingan (1 Tomoe)
+        const mission = gameState.missions.sasuke_skill1 || {
+            id: "sasuke_skill1",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 25,
+            cost: 8
+        };
+
+        titleText.textContent = '';
+
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Sharingan (1 Tomoe)</h3>
+                    <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p>- <strong>DPS do Sasuke x2</strong><br><br>
+                        - <strong>+10% chance de acerto crítico contra inimigos de Terra</strong><br>
+                        (Sharingan lê movimentos e explora fraquezas)</p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Sharingan (1 Tomoe)</h3>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p>- <strong>DPS do Sasuke x2</strong><br><br>
+                        - <strong>+10% chance de acerto crítico contra inimigos de Terra</strong><br>
+                        (Sharingan lê movimentos e explora fraquezas)</p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Objetivo da Missão</h4>
+                        <p>- Coletar item de missão:<br>
+                        <strong>👁️ Fragmento de Tomoe Desperto</strong><br><br>
+                        - Dropa entre <strong>fases 15–35</strong><br>
+                        - Chance: <strong>10% por inimigo</strong><br>
+                        - Precisa de: <strong>25 Fragmentos</strong></p>
+                        ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                            <div style="background: linear-gradient(90deg, #ff0000, #aa0000); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                            <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                ${mission.progress}/${mission.target}
+                            </span>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
+    } else if (missionId === 'sasuke_skill2') {
+        // Sasuke Skill 2: Chidori Incompleto
+        const mission = gameState.missions.sasuke_skill2 || {
+            id: "sasuke_skill2",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 12,
+            cost: 20
+        };
+
+        titleText.textContent = '';
+
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Chidori Incompleto</h3>
+                    <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p>- <strong>DPS do Sasuke x2</strong><br><br>
+                        - <strong>Bosses recebem +25% dano adicional de Raio</strong><br><br>
+                        - Durante boss fight:<br>
+                        <strong>Sasuke ganha +5% crit chance</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Raio)</h4>
+                        <p><strong>Bosses recebem +25% dano de Raio</strong></p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Chidori Incompleto</h3>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p>- <strong>DPS do Sasuke x2</strong><br><br>
+                        - <strong>Bosses recebem +25% dano adicional de Raio</strong><br><br>
+                        - Durante boss fight:<br>
+                        <strong>Sasuke ganha +5% crit chance</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Raio)</h4>
+                        <p><strong>Bosses recebem +25% dano de Raio</strong></p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Objetivo da Missão</h4>
+                        <p>- Dropar item exclusivo:<br>
+                        <strong>⚡ Agulha de Chakra Elétrico</strong><br><br>
+                        - Dropa apenas em <strong>bosses das fases 40–80</strong><br>
+                        - Chance: <strong>18% por boss</strong><br>
+                        - Precisa de: <strong>12 Agulhas</strong></p>
+                        ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                            <div style="background: linear-gradient(90deg, #00ffff, #0088ff); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                            <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                ${mission.progress}/${mission.target}
+                            </span>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
+    } else if (missionId === 'sasuke_skill3') {
+        // Sasuke Skill 3: Katon: Goukakyuu no Jutsu
+        const mission = gameState.missions.sasuke_skill3 || {
+            id: "sasuke_skill3",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 90,
+            cost: 50
+        };
+
+        titleText.textContent = '';
+
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Katon: Goukakyuu no Jutsu</h3>
+                    <div style="text-align: center; color: #00ff00; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p>- <strong>Buff Global + Elemental Fire</strong><br><br>
+                        - DPS de todos os ninjas: <strong>+15%</strong><br>
+                        - Inimigos sofrem: <strong>+35% dano de fogo</strong><br><br>
+                        - Sasuke ganha bônus adicional:<br>
+                        <strong>+20% DPS próprio contra inimigos de Vento</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Fogo)</h4>
+                        <p><strong>Inimigos sofrem +35% dano de fogo</strong></p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3>Katon: Goukakyuu no Jutsu</h3>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito</h4>
+                        <p>- <strong>Buff Global + Elemental Fire</strong><br><br>
+                        - DPS de todos os ninjas: <strong>+15%</strong><br>
+                        - Inimigos sofrem: <strong>+35% dano de fogo</strong><br><br>
+                        - Sasuke ganha bônus adicional:<br>
+                        <strong>+20% DPS próprio contra inimigos de Vento</strong></p>
+                    </div>
+                    
+                    <div class="mission-section bonus">
+                        <h4>💥 Bônus Elemental (Fogo)</h4>
+                        <p><strong>Inimigos sofrem +35% dano de fogo</strong></p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Objetivo da Missão</h4>
+                        <p>- Coletar item lendário:<br>
+                        <strong>🔥 Cinzas do Grande Dragão de Fogo</strong><br><br>
+                        - Dropa apenas entre <strong>fases 90–140</strong><br>
+                        - Chance: <strong>6% por inimigo</strong><br>
+                        - Precisa de: <strong>90 Cinzas</strong></p>
+                        ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                            <div style="background: linear-gradient(90deg, #ff4500, #ff8800); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                            <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                ${mission.progress}/${mission.target}
+                            </span>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
+    } else if (missionId === 'sasuke_skill4') {
+        // Sasuke Skill 4: Marca da Maldição (Estágio 1) - Missão Lendária
+        const mission = gameState.missions.sasuke_skill4 || {
+            id: "sasuke_skill4",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            parts: [
+                { id: 1, name: "Fragmentos da Maldição", completed: false, progress: 0, target: 15 },
+                { id: 2, name: "Dominar o Poder Proibido", completed: false },
+                { id: 3, name: "Oferta Final", completed: false, goldCost: 30000000 }
+            ],
+            cost: 140
+        };
+
+        titleText.textContent = '';
+
+        if (mission.completed) {
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3 style="color: #ff00ff;">Marca da Maldição (Estágio 1)</h3>
+                    <div style="text-align: center; color: #ff00ff; margin-bottom: 15px;">
+                        <strong>✅ Habilidade Lendária Desbloqueada!</strong>
+                    </div>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito Ultimate Instável</h4>
+                        <p>- <strong>DPS do Sasuke +120% (x2.2)</strong><br>
+                        - <strong>Clique global recebe +20% dano</strong><br>
+                        - <strong>Bosses recebem +50% dano adicional</strong><br><br>
+                        - <span style="color: #ff00ff;"><strong>Instabilidade:</strong></span><br>
+                        Cada boss DIFERENTE derrotado dá <strong>+2% DPS do Sasuke</strong> (stack infinito)<br>
+                        Mas inimigos de Água reduzem esse bônus pela metade</p>
+                    </div>
+                </div>
+            `;
+            purchaseBtn.style.display = 'none';
+        } else {
+            const part1 = mission.parts[0];
+            const part2 = mission.parts[1];
+            const part3 = mission.parts[2];
+
+            content.innerHTML = `
+                <div class="mission-details">
+                    <h3 style="color: #ff00ff;">Marca da Maldição (Estágio 1)</h3>
+                    <p style="text-align: center; color: #ff00ff; font-style: italic; margin-bottom: 15px;">Missão Lendária — Ultimate Skill</p>
+                    
+                    <div class="mission-section-effect">
+                        <h4>📌 Efeito Ultimate Instável</h4>
+                        <p>- <strong>DPS do Sasuke +120% (x2.2)</strong><br>
+                        - <strong>Clique global recebe +20% dano</strong><br>
+                        - <strong>Bosses recebem +50% dano adicional</strong><br><br>
+                        - <span style="color: #ff00ff;"><strong>Instabilidade:</strong></span><br>
+                        Cada boss DIFERENTE derrotado dá <strong>+2% DPS do Sasuke</strong> (stack infinito)<br>
+                        Mas inimigos de Água reduzem esse bônus pela metade</p>
+                    </div>
+                    
+                    <div class="mission-section objective">
+                        <h4>📋 Missão: "O Chakra Vermelho Começa a Vazar..." (3 Partes)</h4>
+                        
+                        ${!part1.completed ? `
+                        <div style="margin-bottom: 15px;">
+                            <strong>Parte 1/3 — Fragmentos da Maldição</strong><br>
+                            - Dropar: <strong>🖤 Selo Corrompido (Missão)</strong><br>
+                            - Dropa apenas em <strong>bosses das fases 160–220</strong><br>
+                            - Chance: <strong>20%</strong><br>
+                            - Precisa de: <strong>15 Selos</strong>
+                            ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
+                                <div style="background: linear-gradient(90deg, #8b00ff, #ff00ff); width: ${Math.floor((part1.progress / part1.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                                <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
+                                    ${part1.progress}/${part1.target}
+                                </span>
+                            </div>` : ''}
+                        </div>
+                        ` : ''}
+                        
+                        ${part1.completed && !part2.completed ? `
+                        <div style="margin-bottom: 10px; color: #00ff00;">
+                            ✅ Parte 1/3 — Fragmentos da Maldição <strong>Completada</strong>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>Parte 2/3 — Dominar o Poder Proibido</strong><br>
+                            - Derrotar: <strong>Boss da fase 225</strong> (timer normal de 30s)
+                        </div>
+                        ` : ''}
+                        
+                        ${part1.completed && part2.completed && !part3.completed ? `
+                        <div style="margin-bottom: 10px; color: #00ff00;">
+                            ✅ Parte 1/3 — Fragmentos da Maldição <strong>Completada</strong><br>
+                            ✅ Parte 2/3 — Dominar o Poder Proibido <strong>Completada</strong>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>Parte 3/3 — Oferta Final</strong><br>
+                            - Entregar: <strong>30M Gold</strong>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${!mission.purchased ? `
+                    <div class="mission-cost">
+                        <span class="cost-label">Custo da Missão:</span>
+                        <span class="cost-value">💎 ${mission.cost} Diamantes</span>
+                    </div>
+                    
+                    <div class="player-diamonds">
+                        Seus Diamantes: <span class="${gameState.diamonds >= mission.cost ? 'enough' : 'not-enough'}">
+                            💎 ${gameState.diamonds}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            if (!mission.purchased) {
+                purchaseBtn.onclick = () => purchaseMission(missionId);
+                purchaseBtn.disabled = gameState.diamonds < mission.cost;
+                purchaseBtn.style.display = 'block';
+            } else {
+                purchaseBtn.style.display = 'none';
+            }
+        }
     }
 
     modal.classList.add('active');
@@ -2381,7 +3071,98 @@ function purchaseMission(missionId) {
             renderHeroesList();
             closeMissionModal();
 
+        }
+    } else if (missionId === 'sasuke_skill1') {
+        const mission = gameState.missions.sasuke_skill1 || {
+            id: "sasuke_skill1",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 25,
+            cost: 8
+        };
 
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+            gameState.missions.sasuke_skill1 = mission;
+
+            console.log('✅ Missão Sharingan comprada! Comece a coletar Fragmentos de Tomoe Desperto nas fases 15-35!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
+        }
+    } else if (missionId === 'sasuke_skill2') {
+        const mission = gameState.missions.sasuke_skill2 || {
+            id: "sasuke_skill2",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 12,
+            cost: 20
+        };
+
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+            gameState.missions.sasuke_skill2 = mission;
+
+            console.log('✅ Missão Chidori comprada! Comece a coletar Agulhas de Chakra Elétrico em bosses das fases 40-80!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
+        }
+    } else if (missionId === 'sasuke_skill3') {
+        const mission = gameState.missions.sasuke_skill3 || {
+            id: "sasuke_skill3",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            target: 90,
+            cost: 50
+        };
+
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+            gameState.missions.sasuke_skill3 = mission;
+
+            console.log('✅ Missão Katon comprada! Comece a coletar Cinzas do Grande Dragão de Fogo nas fases 90-140!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
+        }
+    } else if (missionId === 'sasuke_skill4') {
+        const mission = gameState.missions.sasuke_skill4 || {
+            id: "sasuke_skill4",
+            purchased: false,
+            completed: false,
+            progress: 0,
+            parts: [
+                { id: 1, name: "Fragmentos da Maldição", completed: false, progress: 0, target: 15 },
+                { id: 2, name: "Dominar o Poder Proibido", completed: false },
+                { id: 3, name: "Oferta Final", completed: false, goldCost: 30000000 }
+            ],
+            cost: 140
+        };
+
+        if (gameState.diamonds >= mission.cost) {
+            gameState.diamonds -= mission.cost;
+            mission.purchased = true;
+            gameState.missions.sasuke_skill4 = mission;
+
+            console.log('✅ Missão Lendária Marca da Maldição comprada! Comece a coletar Selos Corrompidos em bosses das fases 160-220!');
+
+            updateUI();
+            saveGame();
+            renderHeroesList();
+            closeMissionModal();
         }
     }
 }

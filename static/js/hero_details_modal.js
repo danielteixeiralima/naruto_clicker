@@ -77,9 +77,21 @@ function openHeroDetailsModal(heroId) {
         // Aplicar multiplicador de DPS ao damageWithBuffs
         damageWithBuffs *= dpsMultiplier;
 
+        // Para o Naruto, aplicar também o multiplicador de clique ao dano
+        damageWithBuffs *= clickMultiplier;
+
         // Adicionar multiplicadores aos buffs pessoais
         if (clickMultiplier > 1) {
             personalBuffs.push(`Dano de Clique: x${clickMultiplier.toFixed(0)}`);
+        }
+
+        // Adicionar buff global da Skill 2 (+1% DPS global a cada 10 níveis)
+        if (gameState.missions.naruto_skill2?.completed) {
+            const dpsPercentBonus = Math.floor(hero.level / 10);
+            if (dpsPercentBonus > 0) {
+                const key = "DPS de todos os heróis";
+                globalBuffsMap[key] = (globalBuffsMap[key] || 0) + dpsPercentBonus;
+            }
         }
 
         // Adicionar buff global da Skill 4
