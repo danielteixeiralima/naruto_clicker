@@ -1092,6 +1092,47 @@ function monterDeath() {
             }
         }
 
+        // ========================================
+        // SISTEMA DE DROP - SKILL 4 NARUTO (CHAKRA DA KYUUBI) - PARTE 1
+        // ========================================
+        const mission4 = gameState.missions.naruto_skill4;
+        if (mission4 && mission4.purchased && !mission4.completed) {
+
+            // PARTE 1: Fragmentos de Selo Enfraquecido (10% de chance em qualquer inimigo normal)
+            // Apenas nas zonas 100-130
+            const isInSealDropZone = gameState.currentZone >= 100 && gameState.currentZone <= 130;
+            if (!mission4.part1.completed && isInSealDropZone && Math.random() < 0.10) {
+                mission4.part1.progress++;
+                console.log(`🩸 Fragmento de Selo Enfraquecido coletado! Progresso: ${mission4.part1.progress}/${mission4.part1.target}`);
+
+                // Mostrar notificação visual
+                const droppedItem = {
+                    icon: '🩸',
+                    name: 'Fragmento de Selo Enfraquecido',
+                    description: 'Um fragmento do selo que contém a Kyuubi',
+                    count: 1,
+                    isImage: false
+                };
+                showItemDropNotification(droppedItem);
+
+                // Verificar se completou a Parte 1
+                if (mission4.part1.progress >= mission4.part1.target) {
+                    mission4.part1.progress = mission4.part1.target;
+                    mission4.part1.completed = true;
+                    console.log('✅ Parte 1 Completa: Selos Quebrados!');
+
+                    // Notificação de conclusão da parte
+                    showMissionNotification('Chakra da Kyuubi', 'Parte 1 Completa: Selos Quebrados!');
+
+                    renderHeroesList();
+                    saveGame();
+                }
+
+                // Atualizar painel de missões
+                renderActiveMissions();
+            }
+        }
+
         // Sistema de Drop de Diamantes (1% de chance para qualquer inimigo)
         if (Math.random() < 0.01) {
             const diamondsAmount = Math.floor(Math.random() * 3) + 1; // 1 a 3 diamantes
@@ -1112,6 +1153,59 @@ function monterDeath() {
             if (gameState.currentZone === gameState.statistics.maxZone) {
                 gameState.statistics.maxZone++;
                 renderArenas();
+            }
+        }
+    }
+
+    // ========================================
+    // SISTEMA DE DROP - SKILL 4 NARUTO (CHAKRA DA KYUUBI) - PARTE 2
+    // ========================================
+    // PARTE 2: Resíduos de Chakra da Kyūbi (15% apenas em BOSSES nas zonas 100-200)
+    // Esta lógica está FORA do if/else para que execute quando bosses forem derrotados
+    const mission4 = gameState.missions.naruto_skill4;
+    if (mission4 && mission4.purchased && !mission4.completed) {
+        const isInKyuubiDropZone = gameState.currentZone >= 100 && gameState.currentZone <= 200;
+
+        // Só pode progredir se a Parte 1 estiver completa E for um boss
+        if (mission4.part1.completed && !mission4.part2.completed && isBoss && isInKyuubiDropZone) {
+            console.log('🔍 DEBUG Skill 4 Parte 2:');
+            console.log('  - Parte 1 completa?', mission4.part1.completed);
+            console.log('  - Parte 2 completa?', mission4.part2.completed);
+            console.log('  - Zona atual:', gameState.currentZone);
+            console.log('  - É boss?', isBoss);
+            console.log('  - Na zona de drop?', isInKyuubiDropZone);
+            console.log('  - Part2 structure:', mission4.part2);
+
+            // 15% de chance de drop
+            if (Math.random() < 0.15) {
+                mission4.part2.progress++;
+                console.log(`🔴 Resíduo de Chakra da Kyūbi coletado! Progresso: ${mission4.part2.progress}/${mission4.part2.target}`);
+
+                // Mostrar notificação visual
+                const droppedItem = {
+                    icon: '🔴',
+                    name: 'Resíduo de Chakra da Kyūbi',
+                    description: 'Chakra vermelho e denso da Raposa de Nove Caudas',
+                    count: 1,
+                    isImage: false
+                };
+                showItemDropNotification(droppedItem);
+
+                // Verificar se completou a Parte 2
+                if (mission4.part2.progress >= mission4.part2.target) {
+                    mission4.part2.progress = mission4.part2.target;
+                    mission4.part2.completed = true;
+                    console.log('✅ Parte 2 Completa: O Chakra Vermelho Responde ao Ódio!');
+
+                    // Notificação de conclusão da parte
+                    showMissionNotification('Chakra da Kyuubi', 'Parte 2 Completa: Chakra Vermelho Liberado!');
+
+                    renderHeroesList();
+                    saveGame();
+                }
+
+                // Atualizar painel de missões
+                renderActiveMissions();
             }
         }
     }
@@ -1449,6 +1543,27 @@ function showItemDropNotification(item) {
     }, 3000);
 }
 
+// Função para mostrar notificação de progresso de missão
+function showMissionNotification(missionName, message) {
+    const notification = document.createElement('div');
+    notification.className = 'mission-notification';
+    notification.innerHTML = `
+        <div class="mission-notification-content">
+            <div class="mission-notification-title">🔴 ${missionName}</div>
+            <div class="mission-notification-message">${message}</div>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Remover após 4 segundos
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 500);
+    }, 4000);
+}
+
+
 // Função para desbloquear o Rasengan do Naruto
 function unlockNarutoRasengan() {
     console.log('🌀 Desbloqueando Rasengan!');
@@ -1524,6 +1639,39 @@ function loadGame() {
             gameState.inventory = saved.inventory || [];
             gameState.diamonds = saved.diamonds || 0; // Carregar diamantes
             gameState.missions = saved.missions || gameState.missions; // Carregar missões
+
+            // CORREÇÃO AUTOMÁTICA: Garantir estrutura correta da Skill 4
+            if (gameState.missions.naruto_skill4) {
+                // Corrigir part1
+                if (!gameState.missions.naruto_skill4.part1) {
+                    gameState.missions.naruto_skill4.part1 = { completed: false, progress: 0, target: 100 };
+                }
+                if (typeof gameState.missions.naruto_skill4.part1.progress === 'undefined') {
+                    gameState.missions.naruto_skill4.part1.progress = 0;
+                }
+                if (typeof gameState.missions.naruto_skill4.part1.target === 'undefined') {
+                    gameState.missions.naruto_skill4.part1.target = 100;
+                }
+
+                // Corrigir part2
+                if (!gameState.missions.naruto_skill4.part2) {
+                    gameState.missions.naruto_skill4.part2 = { completed: false, progress: 0, target: 8 };
+                }
+                if (typeof gameState.missions.naruto_skill4.part2.progress === 'undefined') {
+                    console.log('🔧 [LOAD] Adicionando progress à part2');
+                    gameState.missions.naruto_skill4.part2.progress = 0;
+                }
+                if (typeof gameState.missions.naruto_skill4.part2.target === 'undefined') {
+                    console.log('🔧 [LOAD] Adicionando target à part2');
+                    gameState.missions.naruto_skill4.part2.target = 8;
+                }
+
+                // Corrigir part3
+                if (!gameState.missions.naruto_skill4.part3) {
+                    gameState.missions.naruto_skill4.part3 = { completed: false, goldOffered: false };
+                }
+            }
+
             if (!gameState.statistics.maxZone) gameState.statistics.maxZone = 1;
         } catch (e) {
             console.error("Erro save", e);
@@ -1971,9 +2119,29 @@ function openMissionModal(missionId) {
                 completed: false,
                 cost: 120,
                 part1: { completed: false, progress: 0, target: 100 },
-                part2: { completed: false, bossDefeated: false },
+                part2: { completed: false, progress: 0, target: 8 },
                 part3: { completed: false, goldOffered: false }
             };
+        }
+
+        // CORREÇÃO AUTOMÁTICA: Atualizar target da parte 1 de 12 para 100
+        if (gameState.missions.naruto_skill4.part1 && gameState.missions.naruto_skill4.part1.target === 12) {
+            console.log('🔧 Corrigindo target da skill 4 parte 1: 12 → 100');
+            gameState.missions.naruto_skill4.part1.target = 100;
+            saveGame();
+        }
+
+        // CORREÇÃO AUTOMÁTICA: Garantir que part2 tenha progress e target
+        if (gameState.missions.naruto_skill4.part2) {
+            if (typeof gameState.missions.naruto_skill4.part2.progress === 'undefined') {
+                console.log('🔧 Adicionando progress à part2');
+                gameState.missions.naruto_skill4.part2.progress = 0;
+            }
+            if (typeof gameState.missions.naruto_skill4.part2.target === 'undefined') {
+                console.log('🔧 Adicionando target à part2');
+                gameState.missions.naruto_skill4.part2.target = 8;
+            }
+            saveGame();
         }
 
         const mission = gameState.missions.naruto_skill4;
@@ -1994,9 +2162,9 @@ function openMissionModal(missionId) {
                         <p><strong>Ultimate Skill — Burst de Emergência (Genin)</strong><br><br>
                         <strong>Durante Boss Fight:</strong><br>
                         Clique do Naruto: <strong>+150% dano (x2.5)</strong><br>
-                        DPS do Naruto: <strong>+75%</strong><br>
                         DPS global do time: <strong>+15%</strong><br>
-                        Bosses recebem: <strong>+40% dano de Vento</strong><br><br>
+                        Bosses recebem: <strong>+40% dano de Vento</strong><br>
+                        Dano Crítico: <strong>+5% a cada 20 níveis do Naruto</strong><br><br>
                         <strong>🔥 Quando o boss está abaixo de 30% HP:</strong><br>
                         Naruto entra em "surto"<br>
                         Clique do Naruto recebe mais <strong>+50% dano</strong></p>
@@ -2026,9 +2194,9 @@ function openMissionModal(missionId) {
                         <p><strong>Ultimate Skill — Burst de Emergência (Genin)</strong><br><br>
                         <strong>Durante Boss Fight:</strong><br>
                         Clique do Naruto: <strong>+150% dano (x2.5)</strong><br>
-                        DPS do Naruto: <strong>+75%</strong><br>
                         DPS global do time: <strong>+15%</strong><br>
-                        Bosses recebem: <strong>+40% dano de Vento</strong><br><br>
+                        Bosses recebem: <strong>+40% dano de Vento</strong><br>
+                        Dano Crítico: <strong>+5% a cada 20 níveis do Naruto</strong><br><br>
                         <strong>🔥 Quando o boss está abaixo de 30% HP:</strong><br>
                         Naruto entra em "surto"<br>
                         Clique do Naruto recebe mais <strong>+50% dano</strong></p>
@@ -2042,17 +2210,17 @@ function openMissionModal(missionId) {
                             <p style="${completedClass}"><strong>Parte 1/3 — Selos Quebrados</strong></p>
                             ${mission.purchased && !mission.part1.completed ? `
                                 <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
-                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor((mission.part1.progress / mission.part1.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor(((mission.part1.progress || 0) / (mission.part1.target || 100)) * 100)}%; height: 100%; border-radius: 5px;"></div>
                                     <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000; font-size: 0.9em;">
-                                        ${mission.part1.progress}/${mission.part1.target}
+                                        ${mission.part1.progress || 0}/${mission.part1.target || 100}
                                     </span>
                                 </div>
                             ` : ''}
                             <p style="${completedClass}; font-size: 0.9em;">
-                            ${mission.purchased ? `<strong>${mission.part1.progress}/${mission.part1.target}</strong><br>` : ''}
+                            ${mission.purchased ? `<strong>${mission.part1.progress || 0}/${mission.part1.target || 100}</strong><br>` : ''}
                             Dropar: <strong>🩸 Fragmento de Selo Enfraquecido</strong><br>
-                            Taxa de drop: <strong style="color: #ffd700;">10%</strong> por inimigo derrotado<br>
-                            Precisa de: <strong>100 Fragmentos</strong></p>
+                            Chance de drop: <strong style="color: #ffd700;">10% ao derrotar inimigos</strong><br>
+                            Meta: <strong>100 Fragmentos</strong></p>
                         </div>
                         
                         ${showPart2 ? `
@@ -2061,17 +2229,18 @@ function openMissionModal(missionId) {
                             <p style="${completed2Class}"><strong>Parte 2/3 — O Chakra Vermelho Responde ao Ódio</strong></p>
                             ${mission.purchased && !mission.part2.completed ? `
                                 <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
-                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor((mission.part2.progress / mission.part2.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor(((mission.part2.progress || 0) / (mission.part2.target || 8)) * 100)}%; height: 100%; border-radius: 5px;"></div>
                                     <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000; font-size: 0.9em;">
-                                        ${mission.part2.progress}/${mission.part2.target}
+                                        ${mission.part2.progress || 0}/${mission.part2.target || 8}
                                     </span>
                                 </div>
                             ` : ''}
                             <p style="${completed2Class}; font-size: 0.9em;">
-                            ${mission.purchased && showPart2 ? `<strong>${mission.part2.progress}/${mission.part2.target}</strong><br>` : ''}
-                            Dropar: <strong>🩸 Resíduo de Chakra da Kyūbi</strong><br>
-                            Taxa de drop: <strong style="color: #ffd700;">30%</strong> por boss derrotado (zonas 5, 10, 15...)<br>
-                            Precisa de: <strong>8 Resíduos</strong></p>
+                            ${mission.purchased && showPart2 ? `<strong>${mission.part2.progress || 0}/${mission.part2.target || 8}</strong><br>` : ''}
+                            Dropar: <strong>🔴 Resíduo de Chakra da Kyūbi</strong><br>
+                            <strong style="color: #ffd700;">15% de chance</strong> ao derrotar bosses<br>
+                            <strong>Apenas nas zonas 100-200</strong><br>
+                            Meta: <strong>8 Resíduos</strong></p>
                         </div>
                         ` : ''}
                         
@@ -2194,7 +2363,7 @@ function purchaseMission(missionId) {
                 completed: false,
                 cost: 120,
                 part1: { completed: false, progress: 0, target: 100 },
-                part2: { completed: false, bossDefeated: false },
+                part2: { completed: false, progress: 0, target: 8 },
                 part3: { completed: false, goldOffered: false }
             };
         }
@@ -2658,3 +2827,49 @@ window.adminHelp = function () {
 };
 
 console.log('🔧 Modo Admin ativado! Digite adminHelp() para ver os comandos disponíveis.');
+
+// Comando de teste para Skill 4
+window.testSkill4Drop = function () {
+    const mission4 = gameState.missions.naruto_skill4;
+    console.log('🔍 ========== TESTE SKILL 4 ==========');
+    console.log('Missão comprada?', mission4.purchased);
+    console.log('Missão completa?', mission4.completed);
+    console.log('Parte 1:', mission4.part1);
+    console.log('Parte 2:', mission4.part2);
+    console.log('Zona atual:', gameState.currentZone);
+    console.log('Zona 100-200?', gameState.currentZone >= 100 && gameState.currentZone <= 200);
+    console.log('');
+
+    if (!mission4.purchased) {
+        console.log('❌ Missão não comprada!');
+        return;
+    }
+
+    if (!mission4.part1.completed) {
+        console.log('❌ Parte 1 não está completa!');
+        console.log('💡 Complete a Parte 1 primeiro');
+        return;
+    }
+
+    if (mission4.part2.completed) {
+        console.log('✅ Parte 2 já está completa!');
+        return;
+    }
+
+    // Forçar um drop
+    mission4.part2.progress++;
+    console.log('✅ Drop forçado! Novo progresso:', mission4.part2.progress + '/' + mission4.part2.target);
+    saveGame();
+    renderActiveMissions();
+
+    const droppedItem = {
+        icon: '🔴',
+        name: 'Resíduo de Chakra da Kyūbi',
+        description: 'Chakra vermelho e denso da Raposa de Nove Caudas',
+        count: 1,
+        isImage: false
+    };
+    showItemDropNotification(droppedItem);
+    console.log('========================================');
+};
+

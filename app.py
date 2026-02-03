@@ -17,10 +17,10 @@ def send_static(path):
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("🎮 NARUTO CLICKER - Servidor Iniciado!")
+    print("NARUTO CLICKER - Servidor Iniciado!")
     print("="*60)
-    print("📍 Acesse: http://localhost:8080")
-    print("🔄 Cache desabilitado - mudanças aparecem imediatamente")
-    print("⚠️  Pressione Ctrl+C para parar o servidor")
+    print("Acesse: http://localhost:8080")
+    print("Cache desabilitado - mudancas aparecem imediatamente")
+    print("Pressione Ctrl+C para parar o servidor")
     print("="*60 + "\n")
     app.run(debug=True, port=8080, host='0.0.0.0')

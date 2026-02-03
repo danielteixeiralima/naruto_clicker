@@ -27,6 +27,16 @@ function renderActiveMissions() {
     if (!container) return;
 
     const missions = gameState.missions;
+
+    // CORREÇÃO AUTOMÁTICA: Atualizar target da skill 4 parte 1 de 12 para 100
+    if (missions.naruto_skill4 && missions.naruto_skill4.part1) {
+        if (missions.naruto_skill4.part1.target === 12) {
+            console.log('🔧 Corrigindo target da skill 4 parte 1: 12 → 100');
+            missions.naruto_skill4.part1.target = 100;
+            saveGame(); // Salvar a correção
+        }
+    }
+
     const activeMissions = [];
 
     // Mapear missões para seus respectivos heróis e nomes

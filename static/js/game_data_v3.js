@@ -44,10 +44,10 @@ const heroesData = [
 // Definição Manual de Skills para os Principais (Fiel ao Anime)
 const specificUpgrades = {
     1: [ // Naruto
-        { id: "h1_u1", reqLevel: 20, type: "SELF_DPS_MULT", value: 2, costMultiplier: 10, icon: "./static/img/skills/skill_1_1.png", name: "Kage Bunshin no Jutsu", desc: "DPS do Naruto x2" },
-        { id: "h1_u2", reqLevel: 40, type: "SELF_DPS_MULT", value: 2, costMultiplier: 50, icon: "./static/img/skills/skill_1_2.png", name: "Tajuu Kage Bunshin", desc: "Dano de Clique x2" },
+        { id: "h1_u1", reqLevel: 20, type: "CLICK_DAMAGE", value: 2, costMultiplier: 10, icon: "./static/img/skills/skill_1_1.png", name: "Kage Bunshin no Jutsu", desc: "Dano de Clique x2" },
+        { id: "h1_u2", reqLevel: 40, type: "CLICK_DAMAGE", value: 2, costMultiplier: 50, icon: "./static/img/skills/skill_1_2.png", name: "Tajuu Kage Bunshin", desc: "Dano de Clique x2" },
         { id: "h1_u3", reqLevel: 60, type: "GLOBAL_DPS_MULT", value: 1.15, costMultiplier: 200, icon: "./static/img/skills/skill_1_3.png", name: "Rasengan", desc: "DPS de Todos +15%" },
-        { id: "h1_u4", reqLevel: 80, type: "CRIT_CHANCE", value: 0.01, costMultiplier: 1000, icon: "./static/img/skills/skill_1_4.png", name: "Chakra da Kyuubi", desc: "Chance Crítica +1%" }
+        { id: "h1_u4", reqLevel: 80, type: "MISSION", value: 0, costMultiplier: 1000, icon: "./static/img/skills/skill_1_4.png", name: "Chakra da Kyuubi", desc: "Missão: Liberar o Chakra da Kyūbi" }
     ],
     2: [ // Sasuke
         { id: "h2_u1", reqLevel: 20, type: "SELF_DPS_MULT", value: 2, costMultiplier: 10, icon: "./static/img/skills/skill_3_1.png", name: "Sharingan", desc: "DPS do Sasuke x2" },
