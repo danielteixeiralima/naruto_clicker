@@ -68,7 +68,7 @@ const gameState = {
             part2: {
                 completed: false,
                 progress: 0,
-                target: 8 // 8 Resíduos de Chakra da Kyūbi
+                target: 1 // Derrotar o boss da fase 150 uma vez
             },
             // Parte 3: Controle Instável
             part3: {
@@ -119,7 +119,7 @@ function calculateCost(baseCost, currentLevel) {
 
 function recalculateTotalDps() {
     let dps = 0;
-    let clickCtx = 1;
+    let clickCtx = 0; // Inicializar com 0, não 1
     let globalMulti = 1;
     let critChanceAcc = 0;
 
@@ -184,7 +184,30 @@ function recalculateTotalDps() {
         clickMultiplier *= 2;
     }
 
-    gameState.clickDamage = clickCtx * globalMulti * clickMultiplier;
+    // Naruto Skill 4: Chakra da Kyuubi (Dano de Clique x2.5)
+    if (gameState.missions.naruto_skill4?.completed) {
+        clickMultiplier *= 2.5;
+    }
+
+    // Calcular dano de clique do Naruto (SEM globalMulti - apenas multiplicadores de clique)
+    // O globalMulti é para DPS passivo, não para dano de clique manual
+    let clickDamageBase = clickCtx * clickMultiplier;
+
+    // Calcular bônus elemental de Vento (+15% por skill completada)
+    // Apenas Skills 1 e 2 dão bônus elemental de Vento
+    let windSkillCount = 0;
+    if (gameState.missions.naruto_skill1?.completed) windSkillCount++;
+    if (gameState.missions.naruto_skill2?.completed) windSkillCount++;
+
+
+    let elementalBonus = 0;
+    if (windSkillCount > 0) {
+        elementalBonus = clickDamageBase * (0.15 * windSkillCount);
+    }
+
+    // Armazenar o dano base (sem elemental) e o dano total (com elemental)
+    gameState.clickDamageBase = clickDamageBase; // Dano base puro (720)
+    gameState.clickDamage = clickDamageBase + elementalBonus; // Dano total para display (936)
 }
 
 // Renderização da Lista de Heróis (Split Layout: Left Name/Img, Right Info)
@@ -283,12 +306,11 @@ function renderHeroesList() {
                 }
 
                 // Calcular dano elemental (Vento = +15% por skill completada)
+                // APENAS Skills 1 e 2 dão +15% de dano elemental de Vento
                 let elementalDamage = 0;
                 let elementalCount = 0;
                 if (gameState.missions.naruto_skill1?.completed) elementalCount++;
                 if (gameState.missions.naruto_skill2?.completed) elementalCount++;
-                if (gameState.missions.naruto_skill3?.completed) elementalCount++;
-                if (gameState.missions.naruto_skill4?.completed) elementalCount++;
 
                 if (elementalCount > 0) {
                     elementalDamage = clickDamageWithBuffs * (0.15 * elementalCount);
@@ -1101,8 +1123,16 @@ function spawnMonster() {
     updateMonsterUI();
 }
 
+
 // Calcular dano elemental baseado nos buffs dos heróis
 function calculateElementalDamage() {
+    // Usa o dano base padrão do gameState
+    return calculateElementalDamageFromBase(gameState.clickDamageBase);
+}
+
+// Calcular dano elemental a partir de um dano base específico
+// Usado quando o dano base já foi modificado (ex: pelo surto)
+function calculateElementalDamageFromBase(baseDamage) {
     let elementalDmg = 0;
     let elementType = null;
     let windBonus = 0;
@@ -1115,9 +1145,16 @@ function calculateElementalDamage() {
             windBonus += 0.15;
         }
 
-        // +10% adicional de dano contra inimigos de Raio (vantagem elemental)
-        if (gameState.currentMonster && gameState.currentMonster.element === 'Raio') {
-            windBonus += 0.10;
+        // Skill 2: Tajuu Kage Bunshin (+15% dano de Vento)
+        if (gameState.missions.naruto_skill2?.completed) {
+            windBonus += 0.15;
+        }
+
+        // Skill 3: Rasengan - Efeito contra inimigos de Raio (+10% adicional)
+        if (gameState.missions.naruto_skill3?.completed) {
+            if (gameState.currentMonster && gameState.currentMonster.element === 'Raio') {
+                windBonus += 0.10;
+            }
         }
 
         // Buffs de Vento contra bosses
@@ -1134,23 +1171,45 @@ function calculateElementalDamage() {
             }
         }
 
-        // Calcular dano elemental de Vento (só se houver algum buff)
+        // Calcular dano elemental de Vento usando o dano base fornecido
         if (windBonus > 0) {
-            elementalDmg = gameState.clickDamage * windBonus;
+            elementalDmg = baseDamage * windBonus;
             elementType = 'Vento';
         }
     }
 
-    console.log('calculateElementalDamage - Resultado:', { damage: elementalDmg, type: elementType, windBonus: windBonus });
+    console.log('calculateElementalDamageFromBase - Base:', baseDamage, 'Resultado:', { damage: elementalDmg, type: elementType, windBonus: windBonus });
     return { damage: elementalDmg, type: elementType };
 }
 
 function damageMonster(amount, isClick = false, elementalDamage = 0, elementType = null) {
-    // amount já é o dano base puro (gameState.clickDamage)
+    // amount já é o dano base puro (gameState.clickDamageBase)
     // elementalDamage é calculado separadamente
     let finalBaseDmg = amount;
-    let finalElementalDmg = elementalDamage;
+    let finalElementalDmg = 0; // Será recalculado após o surto
     let isCrit = false;
+    let surgeBuff = 1; // Multiplicador do buff de surto
+
+    // Verificar se Naruto está em "surto" (boss abaixo de 30% HP)
+    const isBoss = gameState.currentZone % 5 === 0;
+    if (isClick && isBoss && gameState.currentMonster) {
+        const hpPercent = gameState.currentMonster.hp / gameState.currentMonster.maxHp;
+        if (hpPercent < 0.30) {
+            surgeBuff = 1.5; // +50% de dano de clique
+            showSurgeIndicator();
+        }
+    }
+
+    // Aplicar buff de surto ao dano base
+    finalBaseDmg *= surgeBuff;
+
+    // RECALCULAR dano elemental APÓS aplicar surto
+    // O dano elemental deve ser % do dano base JÁ AUMENTADO
+    if (isClick) {
+        const elemental = calculateElementalDamageFromBase(finalBaseDmg);
+        finalElementalDmg = elemental.damage;
+        elementType = elemental.type;
+    }
 
     if (isClick && gameState.critChance > 0) {
         if (Math.random() < gameState.critChance) {
@@ -1190,6 +1249,9 @@ function damageMonster(amount, isClick = false, elementalDamage = 0, elementType
 }
 
 function monterDeath() {
+    // Remover indicador de surto
+    removeSurgeIndicator();
+
     // Recompensa
     const zoneMultiplier = Math.pow(zoneData.coinsMultiplier, gameState.currentZone - 1);
     const goldDrop = Math.ceil(Math.random() * 3 * zoneMultiplier);
@@ -1204,6 +1266,9 @@ function monterDeath() {
     const skill1Mission = gameState.missions.naruto_skill1;
     if (skill1Mission && skill1Mission.purchased && !skill1Mission.completed) {
         skill1Mission.progress++;
+
+        // Atualizar painel de missões em tempo real
+        renderActiveMissions();
 
         // Verificar se completou a missão
         if (skill1Mission.progress >= skill1Mission.target) {
@@ -1452,53 +1517,48 @@ function monterDeath() {
     // ========================================
     // SISTEMA DE DROP - SKILL 4 NARUTO (CHAKRA DA KYUUBI) - PARTE 2
     // ========================================
-    // PARTE 2: Resíduos de Chakra da Kyūbi (15% apenas em BOSSES nas zonas 100-200)
+    // PARTE 2: Resíduos de Chakra da Kyūbi (apenas no boss da fase 150)
     // Esta lógica está FORA do if/else para que execute quando bosses forem derrotados
     const mission4 = gameState.missions.naruto_skill4;
     if (mission4 && mission4.purchased && !mission4.completed) {
-        const isInKyuubiDropZone = gameState.currentZone >= 100 && gameState.currentZone <= 200;
-
-        // Só pode progredir se a Parte 1 estiver completa E for um boss
-        if (mission4.part1.completed && !mission4.part2.completed && isBoss && isInKyuubiDropZone) {
+        // Só pode progredir se a Parte 1 estiver completa E for o boss da fase 150
+        if (mission4.part1.completed && !mission4.part2.completed && isBoss && gameState.currentZone === 150) {
             console.log('🔍 DEBUG Skill 4 Parte 2:');
             console.log('  - Parte 1 completa?', mission4.part1.completed);
             console.log('  - Parte 2 completa?', mission4.part2.completed);
             console.log('  - Zona atual:', gameState.currentZone);
             console.log('  - É boss?', isBoss);
-            console.log('  - Na zona de drop?', isInKyuubiDropZone);
             console.log('  - Part2 structure:', mission4.part2);
 
-            // 15% de chance de drop
-            if (Math.random() < 0.15) {
-                mission4.part2.progress++;
-                console.log(`🔴 Resíduo de Chakra da Kyūbi coletado! Progresso: ${mission4.part2.progress}/${mission4.part2.target}`);
+            // 100% de chance de drop no boss da fase 140
+            mission4.part2.progress++;
+            console.log(`🔴 Resíduo de Chakra da Kyūbi coletado! Progresso: ${mission4.part2.progress}/${mission4.part2.target}`);
 
-                // Mostrar notificação visual
-                const droppedItem = {
-                    icon: '🔴',
-                    name: 'Resíduo de Chakra da Kyūbi',
-                    description: 'Chakra vermelho e denso da Raposa de Nove Caudas',
-                    count: 1,
-                    isImage: false
-                };
-                showItemDropNotification(droppedItem);
+            // Mostrar notificação visual
+            const droppedItem = {
+                icon: '🔴',
+                name: 'Resíduo de Chakra da Kyūbi',
+                description: 'Chakra vermelho e denso da Raposa de Nove Caudas',
+                count: 1,
+                isImage: false
+            };
+            showItemDropNotification(droppedItem);
 
-                // Verificar se completou a Parte 2
-                if (mission4.part2.progress >= mission4.part2.target) {
-                    mission4.part2.progress = mission4.part2.target;
-                    mission4.part2.completed = true;
-                    console.log('✅ Parte 2 Completa: O Chakra Vermelho Responde ao Ódio!');
+            // Verificar se completou a Parte 2
+            if (mission4.part2.progress >= mission4.part2.target) {
+                mission4.part2.progress = mission4.part2.target;
+                mission4.part2.completed = true;
+                console.log('✅ Parte 2 Completa: O Chakra Vermelho Responde ao Ódio!');
 
-                    // Notificação de conclusão da parte
-                    showMissionNotification('Chakra da Kyuubi', 'Parte 2 Completa: Chakra Vermelho Liberado!');
+                // Notificação de conclusão da parte
+                showMissionNotification('Chakra da Kyuubi', 'Parte 2 Completa: Chakra Vermelho Liberado!');
 
-                    renderHeroesList();
-                    saveGame();
-                }
-
-                // Atualizar painel de missões
-                renderActiveMissions();
+                renderHeroesList();
+                saveGame();
             }
+
+            // Atualizar painel de missões
+            renderActiveMissions();
         }
     }
 
@@ -1649,8 +1709,8 @@ function setupEventListeners() {
             // Calcular dano elemental
             const elemental = calculateElementalDamage();
 
-            // Aplicar dano base + dano elemental
-            damageMonster(gameState.clickDamage, true, elemental.damage, elemental.type);
+            // Aplicar dano base (SEM elemental) + dano elemental separado
+            damageMonster(gameState.clickDamageBase, true, elemental.damage, elemental.type);
 
             const vis = clickTarget.querySelector('.monster-visual');
             if (vis) vis.style.transform = "scale(0.9)";
@@ -1747,6 +1807,33 @@ function createDamageNumber(amount, isCrit, elementType = null) {
     container.appendChild(el);
 
     setTimeout(() => el.remove(), 1000);
+}
+
+// Funções de Indicador de Surto
+function showSurgeIndicator() {
+    const narutoCard = document.querySelector('[data-hero-id="1"]');
+    if (narutoCard && !narutoCard.classList.contains('surge-active')) {
+        narutoCard.classList.add('surge-active');
+
+        // Adicionar efeito também na imagem (classe correta: hero-full-body-img)
+        const narutoImg = narutoCard.querySelector('.hero-full-body-img');
+        if (narutoImg) {
+            narutoImg.classList.add('surge-active-img');
+        }
+    }
+}
+
+function removeSurgeIndicator() {
+    const narutoCard = document.querySelector('[data-hero-id="1"]');
+    if (narutoCard) {
+        narutoCard.classList.remove('surge-active');
+
+        // Remover efeito da imagem (classe correta: hero-full-body-img)
+        const narutoImg = narutoCard.querySelector('.hero-full-body-img');
+        if (narutoImg) {
+            narutoImg.classList.remove('surge-active-img');
+        }
+    }
 }
 
 function animateMonsterShake() {
@@ -2177,7 +2264,8 @@ function openMissionModal(missionId) {
                     
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p>- <strong>Dano de Clique x2</strong></p>
+                        <p>- <strong>Dano de Clique x2</strong><br><br>
+                        - <strong>+3% de chance de crítico</strong></p>
                     </div>
                     
                     <div class="mission-section bonus">
@@ -2194,7 +2282,8 @@ function openMissionModal(missionId) {
                     <h3>Kage Bunshin no Jutsu</h3>
                     <div class="mission-section-effect">
                         <h4>📌 Efeito</h4>
-                        <p>- <strong>Dano de Clique x2</strong></p>
+                        <p>- <strong>Dano de Clique x2</strong><br><br>
+                        - <strong>+3% de chance de crítico</strong></p>
                     </div>
                     
                     <div class="mission-section bonus">
@@ -2205,8 +2294,7 @@ function openMissionModal(missionId) {
                     <div class="mission-section objective">
                         <h4>📋 Objetivo da Missão</h4>
                         <p>- Derrotar <strong>150 inimigos normais</strong><br>
-                        - Entre as <strong>fases 1-10</strong><br>
-                        - Usando <strong>apenas clique</strong> (sem DPS)</p>
+                        - Entre as <strong>fases 1-10</strong></p>
                         ${mission.purchased ? `<br><div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
                             <div style="background: linear-gradient(90deg, #00ff00, #00aa00); width: ${Math.floor((mission.progress / mission.target) * 100)}%; height: 100%; border-radius: 5px;"></div>
                             <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000;">
@@ -2464,13 +2552,13 @@ function openMissionModal(missionId) {
                         <h4>📌 Efeito</h4>
                         <p><strong>Ultimate Skill — Burst de Emergência (Genin)</strong><br><br>
                         <strong>Durante Boss Fight:</strong><br>
-                        Clique do Naruto: <strong>+150% dano (x2.5)</strong><br>
-                        DPS global do time: <strong>+15%</strong><br>
-                        Bosses recebem: <strong>+40% dano de Vento</strong><br>
-                        Dano Crítico: <strong>+5% a cada 20 níveis do Naruto</strong><br><br>
+                        - Clique: <strong>+150% dano (x2.5)</strong><br>
+                        - DPS global do time: <strong>+15%</strong><br>
+                        - Bosses recebem: <strong>+40% dano de Vento</strong><br>
+                        - Dano Crítico: <strong>+5% a cada 20 níveis do Naruto</strong><br><br>
                         <strong>🔥 Quando o boss está abaixo de 30% HP:</strong><br>
-                        Naruto entra em "surto"<br>
-                        Clique do Naruto recebe mais <strong>+50% dano</strong></p>
+                        - Naruto entra em "surto"<br>
+                        - Clique recebe mais <strong>+50% dano</strong></p>
                     </div>
                 </div>
             `;
@@ -2496,13 +2584,13 @@ function openMissionModal(missionId) {
                         <h4>📌 Efeito</h4>
                         <p><strong>Ultimate Skill — Burst de Emergência (Genin)</strong><br><br>
                         <strong>Durante Boss Fight:</strong><br>
-                        Clique do Naruto: <strong>+150% dano (x2.5)</strong><br>
-                        DPS global do time: <strong>+15%</strong><br>
-                        Bosses recebem: <strong>+40% dano de Vento</strong><br>
-                        Dano Crítico: <strong>+5% a cada 20 níveis do Naruto</strong><br><br>
+                        - Clique: <strong>+150% dano (x2.5)</strong><br>
+                        - DPS global do time: <strong>+15%</strong><br>
+                        - Bosses recebem: <strong>+40% dano de Vento</strong><br>
+                        - Dano Crítico: <strong>+5% a cada 20 níveis do Naruto</strong><br><br>
                         <strong>🔥 Quando o boss está abaixo de 30% HP:</strong><br>
-                        Naruto entra em "surto"<br>
-                        Clique do Naruto recebe mais <strong>+50% dano</strong></p>
+                        - Naruto entra em "surto"<br>
+                        - Clique recebe mais <strong>+50% dano</strong></p>
                     </div>
                     
                     <div class="mission-section objective">
@@ -2521,9 +2609,10 @@ function openMissionModal(missionId) {
                             ` : ''}
                             <p style="${completedClass}; font-size: 0.9em;">
                             ${mission.purchased ? `<strong>${mission.part1.progress || 0}/${mission.part1.target || 100}</strong><br>` : ''}
-                            Dropar: <strong>🩸 Fragmento de Selo Enfraquecido</strong><br>
-                            Chance de drop: <strong style="color: #ffd700;">10% ao derrotar inimigos</strong><br>
-                            Meta: <strong>100 Fragmentos</strong></p>
+                            - Dropar: <strong>🩸 Fragmento de Selo Enfraquecido</strong><br>
+                            - Dropa nas <strong style="color: #00ffff;">zonas 100–130</strong><br>
+                            - Chance de drop: <strong style="color: #ffd700;">10% ao derrotar inimigos</strong><br>
+                            - Meta: <strong>100 Fragmentos</strong></p>
                         </div>
                         
                         ${showPart2 ? `
@@ -2532,18 +2621,15 @@ function openMissionModal(missionId) {
                             <p style="${completed2Class}"><strong>Parte 2/3 — O Chakra Vermelho Responde ao Ódio</strong></p>
                             ${mission.purchased && !mission.part2.completed ? `
                                 <div style="background: rgba(0,0,0,0.3); border-radius: 5px; height: 20px; margin: 5px 0; position: relative;">
-                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor(((mission.part2.progress || 0) / (mission.part2.target || 8)) * 100)}%; height: 100%; border-radius: 5px;"></div>
+                                    <div style="background: linear-gradient(90deg, #ff4444, #cc0000); width: ${Math.floor(((mission.part2.progress || 0) / (mission.part2.target || 1)) * 100)}%; height: 100%; border-radius: 5px;"></div>
                                     <span style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; text-shadow: 1px 1px 2px #000; font-size: 0.9em;">
-                                        ${mission.part2.progress || 0}/${mission.part2.target || 8}
+                                        ${mission.part2.progress || 0}/${mission.part2.target || 1}
                                     </span>
                                 </div>
                             ` : ''}
                             <p style="${completed2Class}; font-size: 0.9em;">
-                            ${mission.purchased && showPart2 ? `<strong>${mission.part2.progress || 0}/${mission.part2.target || 8}</strong><br>` : ''}
-                            Dropar: <strong>🔴 Resíduo de Chakra da Kyūbi</strong><br>
-                            <strong style="color: #ffd700;">15% de chance</strong> ao derrotar bosses<br>
-                            <strong>Apenas nas zonas 100-200</strong><br>
-                            Meta: <strong>8 Resíduos</strong></p>
+                            ${mission.purchased && showPart2 ? `<strong>${mission.part2.progress || 0}/${mission.part2.target || 1}</strong><br>` : ''}
+                            - Derrotar o <strong style="color: #ff4444;">Boss da Fase 150</strong></p>
                         </div>
                         ` : ''}
                         
@@ -2552,7 +2638,7 @@ function openMissionModal(missionId) {
                         <div style="margin-bottom: 15px;">
                             <p style="${completed3Class}"><strong>Parte 3/3 — Controle Instável</strong></p>
                             <p style="${completed3Class}; font-size: 0.9em;">
-                            Entregar: <strong>💰 15.000.000 Gold</strong><br>
+                            - Entregar: <strong>💰 15.000.000 Gold</strong><br>
                             ${!mission.part3.completed && mission.purchased ? `
                                 <button onclick="offerGoldForKyuubi()" 
                                         style="background: linear-gradient(135deg, #ff4444, #cc0000); 

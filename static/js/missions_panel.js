@@ -37,6 +37,15 @@ function renderActiveMissions() {
         }
     }
 
+    // CORREÇÃO AUTOMÁTICA: Atualizar target da skill 4 parte 2 de 8 para 1
+    if (missions.naruto_skill4 && missions.naruto_skill4.part2) {
+        if (missions.naruto_skill4.part2.target === 8) {
+            console.log('🔧 Corrigindo target da skill 4 parte 2: 8 → 1');
+            missions.naruto_skill4.part2.target = 1;
+            saveGame(); // Salvar a correção
+        }
+    }
+
     const activeMissions = [];
 
     // Mapear missões para seus respectivos heróis e nomes

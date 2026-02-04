@@ -38,7 +38,8 @@ function openHeroDetailsModal(heroId) {
                     globalBuffsMap[key] = (globalBuffsMap[key] || 0) + percentBonus;
                 } else if (upg.type === 'CRIT_CHANCE') {
                     const percentBonus = (upg.value * 100).toFixed(1);
-                    otherBuffs.push(`Chance de crítico +${percentBonus}%`);
+                    const key = "Chance de crítico";
+                    globalBuffsMap[key] = (globalBuffsMap[key] || 0) + parseFloat(percentBonus);
                 }
             }
         });
@@ -46,9 +47,11 @@ function openHeroDetailsModal(heroId) {
 
     // Processar buffs das skills do Naruto
     if (hero.id === 1) {
-        // Skill 1: Kage Bunshin no Jutsu (x2 Click)
+        // Skill 1: Kage Bunshin no Jutsu (x2 Click + 3% Crit)
         if (gameState.missions.naruto_skill1?.completed) {
             clickMultiplier *= 2;
+            const key = "Chance de crítico";
+            globalBuffsMap[key] = (globalBuffsMap[key] || 0) + 3;
         }
 
         // Skill 2: Tajuu Kage Bunshin (x2 Click)
@@ -114,10 +117,9 @@ function openHeroDetailsModal(heroId) {
     let elementalIcon = '💨';
 
     if (hero.id === 1) { // Naruto
+        // Apenas Skills 1 e 2 dão +15% de dano elemental de Vento no clique
         if (gameState.missions.naruto_skill1?.completed) elementalCount++;
         if (gameState.missions.naruto_skill2?.completed) elementalCount++;
-        if (gameState.missions.naruto_skill3?.completed) elementalCount++;
-        if (gameState.missions.naruto_skill4?.completed) elementalCount++;
 
         if (elementalCount > 0) {
             elementalDamage = damageWithBuffs * (0.15 * elementalCount);
@@ -154,13 +156,16 @@ function openHeroDetailsModal(heroId) {
 
         <!-- Seção de Dano -->
         <div class="hero-details-section">
-            <h4>⚔️ Atributos de Dano</h4>
+            <h4>⚔️ Atributos de Dano de Clique</h4>
+            <p style="color: #ff6400; font-size: 0.85em; margin: 0 0 10px 0;">
+                🔥 <strong>Surto:</strong> Quando o boss está abaixo de 30% HP, o dano de clique recebe +50% de bônus
+            </p>
             <div class="hero-details-stat">
-                <span class="hero-details-stat-label">Dano Base:</span>
+                <span class="hero-details-stat-label">Dano de Clique Base:</span>
                 <span class="hero-details-stat-value">${formatNumber(baseDamage)}</span>
             </div>
             <div class="hero-details-stat">
-                <span class="hero-details-stat-label">Dano com Buffs:</span>
+                <span class="hero-details-stat-label">Dano de Clique com Buffs:</span>
                 <span class="hero-details-stat-value">${formatNumber(damageWithBuffs)}</span>
             </div>
             ${elementalDamage > 0 ? `
@@ -170,7 +175,7 @@ function openHeroDetailsModal(heroId) {
             </div>
             ` : ''}
             <div class="hero-details-stat">
-                <span class="hero-details-stat-label">💥 Dano Total:</span>
+                <span class="hero-details-stat-label">💥 Dano Total de Clique:</span>
                 <span class="hero-details-stat-value" style="color: #ffd700; font-size: 1.2em;">${formatNumber(damageWithBuffs + elementalDamage)}</span>
             </div>
         </div>
@@ -195,18 +200,6 @@ function openHeroDetailsModal(heroId) {
             <p style="color: #aaa; font-size: 0.85em; margin: 0 0 10px 0;">Afetam todos os heróis</p>
             ${globalBuffs.map(buff => `
                 <div class="hero-details-buff-item global">
-                    • ${buff}
-                </div>
-            `).join('')}
-        </div>
-        ` : ''}
-
-        <!-- Seção de Outros Buffs -->
-        ${otherBuffs.length > 0 ? `
-        <div class="hero-details-section">
-            <h4>⚡ Outros Buffs</h4>
-            ${otherBuffs.map(buff => `
-                <div class="hero-details-buff-item other">
                     • ${buff}
                 </div>
             `).join('')}

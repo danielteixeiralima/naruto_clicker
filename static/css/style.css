@@ -357,6 +357,45 @@ body::before {
     cursor: not-allowed;
 }
 
+/* Indicador de Surto do Naruto */
+.hero-item.surge-active {
+    box-shadow: 0 0 20px rgba(255, 100, 0, 0.8);
+    animation: surge-pulse 1s infinite;
+}
+
+@keyframes surge-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(255, 100, 0, 0.8);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(255, 100, 0, 1);
+    }
+}
+
+/* Efeito visual na imagem do Naruto durante surto */
+.hero-full-body-img.surge-active-img {
+    box-shadow: 0 0 25px rgba(255, 140, 0, 1), 0 0 40px rgba(255, 100, 0, 0.8);
+    border-color: #ff8c00 !important;
+    animation: surge-img-pulse 0.8s infinite;
+}
+
+@keyframes surge-img-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 25px rgba(255, 140, 0, 1), 0 0 40px rgba(255, 100, 0, 0.8);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 0 35px rgba(255, 140, 0, 1), 0 0 50px rgba(255, 100, 0, 1);
+        transform: scale(1.05);
+    }
+}
+
 .hero-img {
     width: 80px;
     /* Imagem bem maior */
