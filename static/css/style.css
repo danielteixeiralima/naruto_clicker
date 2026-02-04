@@ -379,7 +379,15 @@ body::before {
 .hero-full-body-img.surge-active-img {
     box-shadow: 0 0 25px rgba(255, 140, 0, 1), 0 0 40px rgba(255, 100, 0, 0.8);
     border-color: #ff8c00 !important;
-    animation: surge-img-pulse 0.8s infinite;
+    /* Removida animação de escala - imagem fica parada */
+}
+
+/* Zoom da imagem do herói */
+.hero-full-body-img {
+    transform: scale(1.15);
+    object-fit: cover;
+    /* Garantir comportamento consistente */
+    /* Aumentar zoom da imagem */
 }
 
 @keyframes surge-img-pulse {

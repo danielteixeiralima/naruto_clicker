@@ -1811,7 +1811,7 @@ function createDamageNumber(amount, isCrit, elementType = null) {
 
 // Funções de Indicador de Surto
 function showSurgeIndicator() {
-    const narutoCard = document.querySelector('[data-hero-id="1"]');
+    const narutoCard = document.querySelector('#hero-1');
     if (narutoCard && !narutoCard.classList.contains('surge-active')) {
         narutoCard.classList.add('surge-active');
 
@@ -1819,22 +1819,86 @@ function showSurgeIndicator() {
         const narutoImg = narutoCard.querySelector('.hero-full-body-img');
         if (narutoImg) {
             narutoImg.classList.add('surge-active-img');
+
+            // Pré-carregar a nova imagem
+            const newImg = new Image();
+            newImg.src = './static/img/naruto_surge.jpg';
+
+            newImg.onload = () => {
+                // Adicionar transição
+                narutoImg.style.transition = 'opacity 0.3s ease-in-out';
+
+                // Fade out
+                narutoImg.style.opacity = '0';
+
+                // Trocar imagem e fade in
+                setTimeout(() => {
+                    narutoImg.src = './static/img/naruto_surge.jpg';
+                    narutoImg.style.opacity = '1';
+                }, 300);
+            };
         }
     }
 }
 
-function removeSurgeIndicator() {
-    const narutoCard = document.querySelector('[data-hero-id="1"]');
-    if (narutoCard) {
+function removeSurgeIndicator() {`r`n    const narutoCard = document.querySelector('#hero-1');`r`n    if (narutoCard && narutoCard.classList.contains('surge-active')) {
         narutoCard.classList.remove('surge-active');
 
         // Remover efeito da imagem (classe correta: hero-full-body-img)
         const narutoImg = narutoCard.querySelector('.hero-full-body-img');
         if (narutoImg) {
             narutoImg.classList.remove('surge-active-img');
+
+            // Pré-carregar a imagem normal
+            const newImg = new Image();
+            newImg.src = './static/img/heroes/icons/naruto_icon.png';
+
+            newImg.onload = () => {
+                // Adicionar transição
+                narutoImg.style.transition = 'opacity 0.3s ease-in-out';
+
+                // Fade out
+                narutoImg.style.opacity = '0';
+
+                // Trocar imagem e fade in
+                setTimeout(() => {
+                    narutoImg.src = './static/img/heroes/icons/naruto_icon.png';
+                    narutoImg.style.opacity = '1';
+                }, 300);
+            };
         }
     }
 }
+
+
+// Função para verificar continuamente o status do boss e ativar/desativar surto
+function checkBossSurgeStatus() {
+    const isBoss = gameState.currentZone % 5 === 0;
+
+    if (isBoss && gameState.currentMonster) {
+        const hpPercent = gameState.currentMonster.hp / gameState.currentMonster.maxHp;
+
+        if (hpPercent < 0.30) {
+            // Boss abaixo de 30% - ativar surto
+            showSurgeIndicator();
+        } else {
+            // Boss acima de 30% - desativar surto
+            const narutoCard = document.querySelector('#hero-1');
+            if (narutoCard && narutoCard.classList.contains('surge-active')) {
+                removeSurgeIndicator();
+            }
+        }
+    } else {
+        // Não é boss - garantir que surto está desativado
+        const narutoCard = document.querySelector('#hero-1');
+        if (narutoCard && narutoCard.classList.contains('surge-active')) {
+            removeSurgeIndicator();
+        }
+    }
+}
+
+// Iniciar verificação contínua do status do boss (a cada 100ms)
+setInterval(checkBossSurgeStatus, 100);
 
 function animateMonsterShake() {
     const visual = document.querySelector('.monster-visual');
